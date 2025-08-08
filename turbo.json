@@ -8,6 +8,11 @@
 			"inputs": ["$TURBO_DEFAULT$", ".env*"],
 			"outputs": [".next/**", "!.next/cache/**", "dist/**"]
 		},
+		"build:cli": {
+			"dependsOn": ["^build"],
+			"inputs": ["packages/cli/**"],
+			"outputs": ["packages/cli/dist/**"]
+		},
 		"lint": {
 			"dependsOn": ["^lint"]
 		},

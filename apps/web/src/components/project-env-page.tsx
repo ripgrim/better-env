@@ -2,12 +2,14 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ArrowLeft, Search, Eye, EyeOff, Copy, Plus, Check, Terminal, ChevronDown, ChevronRight } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ProjectLogo } from './project-logo'
 import { useRouter } from 'next/navigation'
+import { PROJECTS } from '@/constants/projects'
+import { classifyEnvVar, type EnvCategory } from '@/lib/env-classifier'
 
 interface EnvVar {
   key: string
@@ -17,17 +19,17 @@ interface EnvVar {
 }
 
 interface ProjectEnvPageProps {
-  projectName: string
+  projectId: string
 }
 
-export function ProjectEnvPage({ projectName }: ProjectEnvPageProps) {
+export function ProjectEnvPage({ projectId }: ProjectEnvPageProps) {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState('')
   const [showAll, setShowAll] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['Authentication']))
   const [copiedItem, setCopiedItem] = useState<string | null>(null)
 
-  const projectId = `${projectName.replace('.', '-')}-${Math.random().toString(36).substr(2, 8)}`
+  const project = useMemo(() => PROJECTS.find((p) => p.id === projectId), [projectId])
 
   const handleCopy = async (text: string, item: string) => {
     try {
@@ -39,22 +41,37 @@ export function ProjectEnvPage({ projectName }: ProjectEnvPageProps) {
     }
   }
 
-  const getEnvVars = (project: string): EnvVar[] => [
-    { key: 'DATABASE_URL', value: 'postgresql://user:pass@localhost:5432/mydb', description: 'Primary database connection', category: 'Database' },
-    { key: 'REDIS_URL', value: 'redis://localhost:6379', description: 'Cache connection URL', category: 'Database' },
-    { key: 'JWT_SECRET', value: 'super-secret-jwt-signing-key-2024', description: 'Token signing secret', category: 'Authentication' },
-    { key: 'API_KEY', value: 'sk-1234567890abcdef1234567890abcdef', description: 'Third-party API key', category: 'Authentication' },
-    { key: 'OAUTH_CLIENT_SECRET', value: 'oauth_secret_1234567890abcdef', description: 'OAuth client secret', category: 'Authentication' },
-    { key: 'STRIPE_SECRET_KEY', value: 'sk_test_1234567890abcdef1234567890abcdef', description: 'Payment processing key', category: 'Payment' },
-    { key: 'SENDGRID_API_KEY', value: 'SG.1234567890abcdef.1234567890abcdef', description: 'Email service API key', category: 'External Services' },
-    { key: 'AWS_ACCESS_KEY_ID', value: 'AKIA1234567890ABCDEF', description: 'AWS access key', category: 'External Services' },
-    { key: 'AWS_SECRET_ACCESS_KEY', value: 'abcdef1234567890abcdef1234567890abcdef12', description: 'AWS secret key', category: 'External Services' },
-    { key: 'NEXT_PUBLIC_APP_URL', value: 'https://myapp.com', description: 'Public application URL', category: 'Configuration' },
-    { key: 'WEBHOOK_SECRET', value: 'whsec_1234567890abcdef1234567890abcdef', description: 'Webhook verification secret', category: 'Configuration' },
-    { key: 'ENCRYPTION_KEY', value: 'enc_1234567890abcdef1234567890abcdef', description: 'Data encryption key', category: 'Security' }
-  ]
+  const envVars: EnvVar[] = useMemo(() => {
+    if (!project) return []
+    return Object.entries(project.envs).map(([key, value]) => {
+      const category = mapCategory(classifyEnvVar(key, value))
+      return {
+        key,
+        value,
+        description: undefined,
+        category,
+      }
+    })
+  }, [project])
 
-  const envVars = getEnvVars(projectName)
+  function mapCategory(cat: EnvCategory): string {
+    switch (cat) {
+      case 'Storage':
+        return 'Storage'
+      case 'Authentication':
+        return 'Authentication'
+      case 'Payments':
+        return 'Payments'
+      case 'Configuration':
+        return 'Configuration'
+      case 'Analytics':
+        return 'Analytics'
+      case 'External':
+        return 'External'
+      default:
+        return 'Misc'
+    }
+  }
   const filteredVars = envVars.filter(envVar => 
     envVar.key.toLowerCase().includes(searchQuery.toLowerCase()) ||
     envVar.description?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -76,16 +93,8 @@ export function ProjectEnvPage({ projectName }: ProjectEnvPageProps) {
     setExpandedGroups(newExpanded)
   }
 
-  const getProjectLogo = (name: string) => {
-    const logoUrls: Record<string, string> = {
-      'oss.now': 'https://cdn.discordapp.com/attachments/915489116970418186/1402974394170478653/ossdotnow.png?ex=6895dd39&is=68948bb9&hm=7e9ea7f51b39b81d4a9c31e1f6de3c2d8d26aa8a90c9b8f212569803f1e80173&',
-      'bounty.new': 'https://cdn.discordapp.com/attachments/915489116970418186/1402974642636980345/bountydark.png?ex=6895dd74&is=68948bf4&hm=86338a50a3694509cb3d35dcee12c8464cc5bf6cc34a65cfc4ef2d67d5ae031e&',
-      'mail0': 'https://cdn.discordapp.com/attachments/915489116970418186/1402974643169661082/mail0dark.png?ex=6895dd74&is=68948bf4&hm=0e1c0fd8e4b9db4de86ee698b6c140a7cc969206de61a9e89c7be1988fccd22c&',
-      'analog.now': 'https://cdn.discordapp.com/attachments/915489116970418186/1402975302946394152/analogdotballs.png?ex=6895de12&is=68948c92&hm=d9bfe24d174d7084cc8e996be1ab912b6b7603fba9f2af4027692bbfcb8f7601&',
-      'call0': 'https://cdn.discordapp.com/attachments/915489116970418186/1402974642926522378/call0jawn.png?ex=6895dd74&is=68948bf4&hm=691be61ce125af91089a76b7dccdf211b85c69d7afa5787916ec70853a211d2e&',
-    }
-    return logoUrls[name] || ''
-  }
+  const projectName = project?.name ?? projectId
+  const projectLogo = project?.logoUrl ?? ''
 
   const maskValue = (value: string) => {
     if (value.length <= 8) return '•'.repeat(value.length)
@@ -102,7 +111,7 @@ export function ProjectEnvPage({ projectName }: ProjectEnvPageProps) {
               <ArrowLeft className="w-4 h-4" />
             </Button>
             <div className="flex items-center gap-3">
-              <ProjectLogo name={projectName} logoUrl={getProjectLogo(projectName)} className="w-7 h-7" />
+              <ProjectLogo name={projectName} logoUrl={projectLogo} className="w-7 h-7" />
               <div>
                 <h1 className="text-text-primary text-lg font-medium tracking-tight">{projectName}</h1>
                 <p className="text-text-secondary text-xs">Environment Variables</p>
@@ -152,11 +161,11 @@ export function ProjectEnvPage({ projectName }: ProjectEnvPageProps) {
               <div className="flex items-center gap-3">
                 <span className="text-text-secondary text-sm font-medium min-w-20">Project ID:</span>
                 <div className="flex items-center gap-2 flex-1">
-                  <code className="bg-secondary px-3 py-1.5 rounded-md text-sm font-mono text-text-primary flex-1">{projectId}</code>
+                   <code className="bg-secondary px-3 py-1.5 rounded-md text-sm font-mono text-text-primary flex-1">{project?.id}</code>
                   <Button
                     variant="text"
                     size="sm"
-                    onClick={() => handleCopy(projectId, 'project-id')}
+                    onClick={() => handleCopy(project?.id ?? '', 'project-id')}
                     className="p-1.5 h-auto hover:bg-accent"
                   >
                     {copiedItem === 'project-id' ? <Check className="w-4 h-4 text-status-online" /> : <Copy className="w-4 h-4" />}
@@ -167,13 +176,11 @@ export function ProjectEnvPage({ projectName }: ProjectEnvPageProps) {
               <div className="flex items-center gap-3">
                 <span className="text-text-secondary text-sm font-medium min-w-20">Pull Command:</span>
                 <div className="flex items-center gap-2 flex-1">
-                  <code className="bg-secondary px-3 py-1.5 rounded-md text-sm font-mono text-text-primary flex-1">
-                    npx env-new@latest pull {projectId}
-                  </code>
+                  <code className="bg-secondary px-3 py-1.5 rounded-md text-sm font-mono text-text-primary flex-1">npx @better-env/cli@latest pull {project?.id}</code>
                   <Button
                     variant="text"
                     size="sm"
-                    onClick={() => handleCopy(`npx env-new@latest pull ${projectId}`, 'pull-command')}
+                    onClick={() => handleCopy(`npx @better-env/cli@latest pull ${project?.id ?? ''}`,'pull-command')}
                     className="p-1.5 h-auto hover:bg-accent"
                   >
                     {copiedItem === 'pull-command' ? <Check className="w-4 h-4 text-status-online" /> : <Copy className="w-4 h-4" />}

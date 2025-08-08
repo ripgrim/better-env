@@ -1,6 +1,6 @@
-import { auth } from "@bounty/auth/server";
+import { auth } from "@better-env/auth/server";
 import { toNextJsHandler } from "better-auth/next-js";
-import { grim } from "@bounty/dev-logger";
+import { grim } from "@better-env/dev-logger";
 
 const { log } = grim();
 

@@ -1,5 +1,5 @@
 {
-  "name": "@bounty/env",
+  "name": "@better-env/env",
   "version": "0.1.0",
   "private": true,
   "exports": {

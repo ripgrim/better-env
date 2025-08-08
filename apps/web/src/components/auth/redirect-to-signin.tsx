@@ -1,6 +1,6 @@
 "use client"
 
-import { authClient } from "@bounty/auth/client";
+import { authClient } from "@better-env/auth/client";
 import { useEffect } from "react";
 
 export default function RedirectToSignIn() {

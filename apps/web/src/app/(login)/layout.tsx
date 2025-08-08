@@ -1,22 +1,22 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "bounty.new - Login",
-  description: "Ship fast, get paid faster.",  
+  title: "better-env - Log in",
+  description: "Ship faster. Get paid instantly.",  
   icons: {
     icon: "/icon.svg",
   },
   openGraph: {
-    title: "bounty.new - Login",
-    description: "Ship fast, get paid faster.",
-    url: "https://bounty.new/login",
-    siteName: "bounty.new - Login",
+    title: "better-env - Log in",
+    description: "Ship faster. Get paid instantly.",
+    url: "https://better-env/login",
+    siteName: "better-env - Log in",
     images: [
       {
         url: "/ogimage.png",
         width: 1200,
         height: 630,
-        alt: "bounty.new - Ship fast, get paid faster.",
+        alt: "better-env - Ship faster. Get paid instantly.",
       },
     ],
   },

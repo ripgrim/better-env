@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
-import { auth } from "@bounty/auth/server";
-import { db } from "@bounty/db";
+import { auth } from "@better-env/auth/server";
+import { db } from "@better-env/db";
 
 function getClientIP(req: NextRequest): string {
   const forwarded = req.headers.get("x-forwarded-for");

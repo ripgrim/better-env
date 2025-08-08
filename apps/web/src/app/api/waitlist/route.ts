@@ -1,20 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { validateFingerprint } from "@/lib/fingerprint-validation";
-import { grim } from "@/hooks/use-dev-log";
-import { db } from "@bounty/db";
-import { waitlist } from "@bounty/db";
+import { grim } from "@better-env/dev-logger";
+import { db } from "@better-env/db";
+import { waitlist } from "@better-env/db";
 
 const { log, error, warn } = grim();
 
 const requestSchema = z.object({
   email: z.string().email("Invalid email format"),
-  fingerprintData: z.object({
-    thumbmark: z.string(),
-    components: z.record(z.any()),
-    info: z.record(z.any()).optional(),
-    version: z.string().optional(),
-  }),
 });
 
 export async function POST(request: NextRequest) {
@@ -32,21 +25,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { email, fingerprintData } = validation.data;
+    const { email } = validation.data;
 
     log("[Waitlist] Processing request for email:", email);
 
-    const fingerprintValidation = validateFingerprint(fingerprintData);
-    if (!fingerprintValidation.isValid) {
-      log("[Waitlist] Fingerprint validation failed:", fingerprintValidation.errors);
-      return NextResponse.json(
-        {
-          error: "Invalid device fingerprint: " + fingerprintValidation.errors.join(", "),
-          success: false,
-        },
-        { status: 400 }
-      );
-    }
+
 
     try {
       log("[Waitlist] Adding email to waitlist:", email);

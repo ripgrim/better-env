@@ -2,7 +2,7 @@ import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { eq, desc, sql } from "drizzle-orm";
 
-import { db, user, session } from "@bounty/db";
+import { db, user, session } from "@better-env/db";
 import { protectedProcedure, publicProcedure, router } from "../trpc";
 
 export const userRouter = router({

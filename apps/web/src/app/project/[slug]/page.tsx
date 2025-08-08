@@ -7,5 +7,5 @@ interface PageProps {
 }
 
 export default function ProjectPage({ params }: PageProps) {
-  return <ProjectEnvPage projectName={params.slug} />
+  return <ProjectEnvPage projectId={params.slug} />
 }

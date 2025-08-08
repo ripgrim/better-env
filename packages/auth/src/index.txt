@@ -1,7 +1,7 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { db } from "@bounty/db";
-import * as schema from "@bounty/db";
+import { db } from "@better-env/db";
+import * as schema from "@better-env/db";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {

@@ -1,4 +1,4 @@
-import { authClient } from "@bounty/auth/client";
+import { authClient } from "@better-env/auth/client";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 

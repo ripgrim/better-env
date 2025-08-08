@@ -1,5 +1,5 @@
 {
-  "name": "@bounty/auth",
+  "name": "@better-env/auth",
   "version": "0.1.0",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
@@ -15,8 +15,8 @@
   },
   "dependencies": {
     "better-auth": "1.3.0",
-    "@bounty/db": "workspace:*",
-    "@bounty/env": "workspace:*"
+    "@better-env/db": "workspace:*",
+    "@better-env/env": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5"

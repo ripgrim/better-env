@@ -1,5 +1,5 @@
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
-import { appRouter, createContext } from "@bounty/api";
+import { appRouter, createContext } from "@better-env/api";
 import { NextRequest } from "next/server";
 
 function handler(req: NextRequest) {

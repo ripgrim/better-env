@@ -1,5 +1,5 @@
 import { useCallback, useState, useEffect } from "react";
-import { authClient } from "@bounty/auth/client";
+import { authClient } from "@better-env/auth/client";
 
 interface Passkey {
   id: string;

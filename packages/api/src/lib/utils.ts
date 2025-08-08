@@ -1,5 +1,5 @@
-import type { Context } from '@bounty/api/';
-import { grim } from '@bounty/dev-logger';
+import type { Context } from '@better-env/api/';
+import { grim } from '@better-env/dev-logger';
 
 const { log } = grim();
 

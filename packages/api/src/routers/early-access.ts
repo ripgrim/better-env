@@ -5,7 +5,7 @@ import { grim } from "../lib/use-dev-log";
 
 const { error, info, warn } = grim();
 
-import { db, waitlist } from "@bounty/db";
+import { db, waitlist } from "@better-env/db";
 import { publicProcedure, router, adminProcedure } from "../trpc";
 
 export const earlyAccessRouter = router({

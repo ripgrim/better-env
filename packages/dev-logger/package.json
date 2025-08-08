@@ -1,7 +1,7 @@
 {
-  "name": "@bounty/dev-logger",
+  "name": "@better-env/dev-logger",
   "version": "1.0.0",
-  "description": "Development logging utility for bounty.new workspace",
+  "description": "Development logging utility for better-env workspace",
   "private": true,
   "type": "module",
   "main": "./src/index.ts",

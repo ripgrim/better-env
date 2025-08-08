@@ -1,10 +1,17 @@
 "use client"
 
 import { Suspense } from "react";
+import { Button } from "@/components/ui/button";
+import { authClient } from "@better-env/auth/client";
 // import Login from "@/components/bounty/login";
 
 function LoginContent() {
-  
+  const handleSignIn = async () => {
+    await authClient.signIn.social({
+      provider: "github",
+      callbackURL: "/",
+    });
+  }
   // const handleGitHubSignIn = async () => {
   //   try {
   //     const callbackURL = redirectUrl ? `${redirectUrl}` : `${baseUrl}/dashboard`;
@@ -31,7 +38,7 @@ function LoginContent() {
   return (
     //<Login/>
     <div>
-      hi
+      <Button onClick={handleSignIn}>Sign in</Button>
     </div>
   )
 }

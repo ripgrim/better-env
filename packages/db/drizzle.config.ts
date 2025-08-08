@@ -1,5 +1,5 @@
 import { defineConfig } from "drizzle-kit";
-import { env } from "@bounty/env/server";
+import { env } from "@better-env/env/server";
 
 export default defineConfig({
   out: "./src/migrations",

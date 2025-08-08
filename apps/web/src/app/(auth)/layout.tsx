@@ -6,22 +6,22 @@ import { DeviceProvider } from "@/components/device-provider";
 // import RedirectToSignIn from "@/components/auth/redirect-to-signin";
 
 export const metadata: Metadata = {
-  title: "bounty",
-  description: "bounty",
+  title: "better-env",
+  description: "better-env",
   icons: {
     icon: "/icon.svg",
   },
   openGraph: {
-    title: "bounty - App",
-    description: "Ship fast, get paid faster.",
-    url: "https://bounty",
-    siteName: "bounty",
+    title: "better-env - App",
+    description: "Ship faster. Get paid instantly.",
+    url: "https://better-env",
+    siteName: "better-env",
     images: [
       {
         url: "/ogimage.png",
         width: 1200,
         height: 630,
-        alt: "bounty.new - Ship fast, get paid faster.",
+        alt: "better-env - Ship faster. Get paid instantly.",
       },
     ],
   },

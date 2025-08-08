@@ -1,6 +1,6 @@
 "use client";
 
-import { authClient } from "@bounty/auth/client";
+import { authClient } from "@better-env/auth/client";
 import { useState } from "react";
 import { toast } from "sonner";
 
