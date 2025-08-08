@@ -5,18 +5,15 @@ import { DashboardHeader } from "@/components/dashboard-header"
 import { ProjectCard } from "@/components/project-card"
 import { Button } from "@/components/ui/button"
 import { Plus, Terminal } from 'lucide-react'
-import { PROJECTS } from "@/constants/projects"
+import { trpc } from "@/utils/trpc"
+import { useQuery } from "@tanstack/react-query"
 import { authClient } from "@better-env/auth/client"
+import { useState } from "react"
+import { CreateProjectDialog } from "@/components/create-project-dialog"
 
 export default function DashboardPage() {
-  const projects = PROJECTS.map((p) => ({
-    id: p.id,
-    name: p.name,
-    logoUrl: p.logoUrl,
-    devices: p.devices,
-    lastSyncTime: p.lastSyncTime,
-    environmentCount: Object.keys(p.envs).length,
-  }))
+  const [open, setOpen] = useState(false)
+  const listQuery = useQuery(trpc.projects.list.queryOptions())
 
   const session = authClient.useSession();
 
@@ -33,21 +30,28 @@ export default function DashboardPage() {
                 <Terminal className="w-4 h-4 text-text-secondary" />
                 <span className="text-text-secondary text-sm font-normal">CLI Online</span>
               </div>
-              <Button className="bg-accent-blue text-primary-foreground rounded-lg px-6 py-2.5 text-base hover:bg-accent-blue-hover transition-colors duration-200 font-medium shadow-sm">
+              <Button onClick={() => setOpen(true)} className="bg-accent-blue text-primary-foreground rounded-lg px-6 py-2.5 text-base hover:bg-accent-blue-hover transition-colors duration-200 font-medium shadow-sm">
                 <Plus className="w-4 h-4" />
                 New Project
               </Button>
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((project) => (
-              <Link key={project.id} href={`/project/${project.id}`}>
-                <ProjectCard {...project} />
+            {(listQuery.data?.data ?? []).map((p) => (
+              <Link key={p.id} href={`/project/${p.id}`}>
+                <ProjectCard
+                  name={p.name}
+                  logoUrl={p.logoUrl || undefined}
+                  devices={[]}
+                  lastSyncTime={(p.updatedAt ?? p.createdAt) as unknown as string}
+                  environmentCount={(p as any).envCount ?? 0}
+                />
               </Link>
             ))}
           </div>
         </div>
       </main>
+      <CreateProjectDialog open={open} onOpenChange={setOpen} />
     </div>
   )
 }

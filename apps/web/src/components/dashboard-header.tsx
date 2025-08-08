@@ -1,9 +1,10 @@
 import Image from "next/image"
-import { Search } from 'lucide-react'
+import { Link, Search } from 'lucide-react'
 
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { User } from "better-auth"
+import { DropdownMenu, DropdownMenuItem, DropdownMenuContent, DropdownMenuTrigger } from "./ui/dropdown-menu"
 
 export function DashboardHeader({ session }: { session: User | null }) {
   return (
@@ -18,17 +19,30 @@ export function DashboardHeader({ session }: { session: User | null }) {
           />
         </div>
         {session && (
-          <Image
-            src={session.image || "/placeholder.svg?height=32&width=32"}
-            width={32}
-            height={32}
-            alt="User Avatar"
-            className="rounded-full"
-          />
+          <DropdownMenu>
+            <DropdownMenuTrigger>
+              <Image
+                src={session.image || "/placeholder.svg?height=32&width=32"}
+                width={32}
+                height={32}
+                alt="User Avatar"
+                className="rounded-full"
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem>
+                <Button variant="text" className="text-text-secondary text-sm px-3 py-2 h-auto hover:bg-accent hover:text-text-primary transition-colors duration-200 font-normal">
+                  Profile
+                </Button>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Button variant="text" className="text-text-secondary text-sm px-3 py-2 h-auto hover:bg-accent hover:text-text-primary transition-colors duration-200 font-normal">
+                  Sign out
+                </Button>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
-        <Button variant="text" className="text-text-secondary text-sm px-3 py-2 h-auto hover:bg-accent hover:text-text-primary transition-colors duration-200 font-normal">
-          Sign out
-        </Button>
       </div>
     </header>
   )

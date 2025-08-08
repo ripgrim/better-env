@@ -8,6 +8,9 @@ export const env = createEnv({
     // Auth
     BETTER_AUTH_SECRET: z.string().min(1),
     BETTER_AUTH_URL: z.string().url(),
+    // Encryption
+    ENV_ENCRYPTION_KEY: z.string().min(1),
+    APP_ENCRYPTION_KEY: z.string().min(1).optional(),
     // Node environment
     NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
     // Polar

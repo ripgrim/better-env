@@ -1,6 +1,6 @@
 //project env page
 
-'use client'
+"use client"
 
 import { useMemo, useState } from 'react'
 import { ArrowLeft, Search, Eye, EyeOff, Copy, Plus, Check, Terminal, ChevronDown, ChevronRight } from 'lucide-react'
@@ -8,7 +8,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ProjectLogo } from './project-logo'
 import { useRouter } from 'next/navigation'
-import { PROJECTS } from '@/constants/projects'
+import { trpc } from '@/utils/trpc'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { AddEnvDialog } from "@/components/dialogs/add-env-dialog"
 import { classifyEnvVar, type EnvCategory } from '@/lib/env-classifier'
 
 interface EnvVar {
@@ -24,12 +26,22 @@ interface ProjectEnvPageProps {
 
 export function ProjectEnvPage({ projectId }: ProjectEnvPageProps) {
   const router = useRouter()
+  const qc = useQueryClient()
   const [searchQuery, setSearchQuery] = useState('')
   const [showAll, setShowAll] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['Authentication']))
   const [copiedItem, setCopiedItem] = useState<string | null>(null)
+  const [openAdd, setOpenAdd] = useState(false)
 
-  const project = useMemo(() => PROJECTS.find((p) => p.id === projectId), [projectId])
+  const projectQuery = useQuery(trpc.projects.get.queryOptions({ id: projectId }))
+  const project = projectQuery.data?.data
+  const addEnv = useMutation({
+    ...trpc.projects.envs.add.mutationOptions(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: trpc.projects.get.queryKey({ id: projectId }) })
+      setOpenAdd(false)
+    },
+  })
 
   const handleCopy = async (text: string, item: string) => {
     try {
@@ -42,15 +54,11 @@ export function ProjectEnvPage({ projectId }: ProjectEnvPageProps) {
   }
 
   const envVars: EnvVar[] = useMemo(() => {
-    if (!project) return []
-    return Object.entries(project.envs).map(([key, value]) => {
+    if (!project || !Array.isArray((project as any).envs)) return []
+    return ((project as any).envs as { key: string; value: string; environmentName?: string }[]).map(({ key, value, environmentName }) => {
       const category = mapCategory(classifyEnvVar(key, value))
-      return {
-        key,
-        value,
-        description: undefined,
-        category,
-      }
+      const displayKey = environmentName && environmentName.toLowerCase().startsWith('prod') ? key : environmentName ? `${environmentName}.${key}` : key
+      return { key: displayKey, value, description: undefined, category }
     })
   }, [project])
 
@@ -93,8 +101,8 @@ export function ProjectEnvPage({ projectId }: ProjectEnvPageProps) {
     setExpandedGroups(newExpanded)
   }
 
-  const projectName = project?.name ?? projectId
-  const projectLogo = project?.logoUrl ?? ''
+  const projectName = (project as any)?.name ?? projectId
+  const projectLogo = (project as any)?.logoUrl ?? ''
 
   const maskValue = (value: string) => {
     if (value.length <= 8) return '•'.repeat(value.length)
@@ -137,7 +145,7 @@ export function ProjectEnvPage({ projectId }: ProjectEnvPageProps) {
               {showAll ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               {showAll ? 'Hide' : 'Show'} All
             </Button>
-            <Button className="bg-accent-blue text-primary-foreground rounded-lg px-4 py-2 text-sm hover:bg-accent-blue-hover transition-colors duration-200 font-medium shadow-sm">
+            <Button onClick={() => setOpenAdd(true)} className="bg-accent-blue text-primary-foreground rounded-lg px-4 py-2 text-sm hover:bg-accent-blue-hover transition-colors duration-200 font-medium shadow-sm">
               <Plus className="w-4 h-4 mr-2" />
               Add Variable
             </Button>
@@ -170,6 +178,12 @@ export function ProjectEnvPage({ projectId }: ProjectEnvPageProps) {
                   >
                     {copiedItem === 'project-id' ? <Check className="w-4 h-4 text-status-online" /> : <Copy className="w-4 h-4" />}
                   </Button>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-text-secondary text-sm font-medium min-w-20">Description:</span>
+                <div className="flex items-center gap-2 flex-1">
+                  <span className="text-text-primary text-sm">{(project as any)?.description || '—'}</span>
                 </div>
               </div>
               
@@ -236,6 +250,7 @@ export function ProjectEnvPage({ projectId }: ProjectEnvPageProps) {
           )}
         </div>
       </main>
+      <AddEnvDialog projectId={projectId} open={openAdd} onOpenChange={setOpenAdd} />
     </div>
   )
 }
