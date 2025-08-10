@@ -1,11 +1,11 @@
 import { ProjectEnvPage } from "@/components/project-env-page"
+import type { Metadata } from "next";
 
-interface PageProps {
-  params: {
-    slug: string
-  }
-}
+export const metadata: Metadata = {
+  title: "Project",
+};
 
-export default function ProjectPage({ params }: PageProps) {
-  return <ProjectEnvPage projectId={params.slug} />
+export default async function ProjectPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  return <ProjectEnvPage projectId={slug} />
 }
