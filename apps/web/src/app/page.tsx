@@ -2,11 +2,8 @@
 
 import Link from "next/link"
 import { DashboardHeader } from "@/components/dashboard-header"
-import { ProjectCard } from "@/components/project-card"
 import { Button } from "@/components/ui/button"
 import { Plus } from 'lucide-react'
-import { trpc } from "@/utils/trpc"
-import { useQuery } from "@tanstack/react-query"
 import { authClient } from "@better-env/auth/client"
 import { useState } from "react"
 import { CreateProjectDialog } from "@/components/create-project-dialog"
@@ -18,7 +15,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 
 export default function DashboardPage() {
   const [open, setOpen] = useState(false)
-  const listQuery = useQuery(trpc.projects.list.queryOptions())
 
   const session = authClient.useSession();
 

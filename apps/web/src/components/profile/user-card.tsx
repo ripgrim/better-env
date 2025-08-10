@@ -2,34 +2,41 @@
 
 import { authClient } from "@better-env/auth/client";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
+import { useMemo, useRef, useEffect, useCallback } from "react";
+import { trpc } from "@/utils/trpc";
+import { useMutation } from "@tanstack/react-query";
+import type { SaveController } from "@/types";
 
-export type UserCardHandle = { save: () => Promise<void>; isDirty: () => boolean };
-type UserCardProps = { editing?: boolean; onDirtyChange?: (dirty: boolean) => void };
-export const UserCard = forwardRef<UserCardHandle, UserCardProps>(function UserCard({ editing: externalEditing = false, onDirtyChange }, ref) {
+type UserCardProps = { editing?: boolean; onDirtyChange?: (dirty: boolean) => void; provideController?: (c: SaveController | null) => void };
+export function UserCard({ editing: externalEditing = false, onDirtyChange, provideController }: UserCardProps) {
   const session = authClient.useSession();
   const nameRef = useRef<HTMLInputElement>(null);
   const originalName = useMemo(() => session.data?.user?.name || "", [session.data?.user?.name]);
 
-  useImperativeHandle(ref, () => ({
-    save: async () => {
-      const nextName = nameRef.current?.value?.trim() || "";
-      if (nextName && nextName !== originalName) {
-        if ((authClient as unknown as { user?: { update?: (data: { name: string }) => Promise<void> } }).user?.update) {
-          await (authClient as unknown as { user: { update: (data: { name: string }) => Promise<void> } }).user.update({ name: nextName });
-        }
-        await session.refetch?.();
-      }
-    },
-    isDirty: () => {
-      const nextName = nameRef.current?.value ?? "";
-      return nextName.trim() !== originalName.trim();
-    },
-  }), [originalName, session]);
+  const updateName = useMutation({
+    ...trpc.user.updateCurrentUserName.mutationOptions(),
+  });
+
+  const isDirty = useCallback(() => {
+    const nextName = nameRef.current?.value ?? "";
+    return nextName.trim() !== originalName.trim();
+  }, [originalName]);
+
+  const save = useCallback(async () => {
+    const nextName = nameRef.current?.value?.trim() || "";
+    if (nextName && nextName !== originalName) {
+      await updateName.mutateAsync({ name: nextName });
+      await session.refetch?.();
+    }
+  }, [originalName, session, updateName]);
+
+  useEffect(() => {
+    provideController?.({ save, isDirty });
+    return () => provideController?.(null);
+  }, [provideController, save, isDirty]);
 
   const handleChange = () => {
     onDirtyChange?.((nameRef.current?.value?.trim() || "") !== originalName);
@@ -56,8 +63,6 @@ export const UserCard = forwardRef<UserCardHandle, UserCardProps>(function UserC
       </div>
     </Card>
   );
-});
-
-UserCard.displayName = "UserCard";
+}
 
 

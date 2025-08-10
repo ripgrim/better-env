@@ -26,17 +26,20 @@ export const OrganizationCard = forwardRef<OrganizationCardHandle, OrganizationC
   const activeOrg = authClient.useActiveOrganization();
   const orgNameRef = useRef<HTMLInputElement>(null);
   const originalOrgName = activeOrg.data?.name || "";
+  const activeOrgId = activeOrg.data?.id ?? null;
+  const refetchActiveOrg = activeOrg.refetch;
+  const refetchOrgs = orgs.refetch;
 
   useImperativeHandle(ref, () => ({
     save: async () => {
       const next = orgNameRef.current?.value?.trim() || "";
-      if (!next || next === originalOrgName || !activeOrg.data?.id) return;
-      await authClient.organization.update({ data: { name: next }, organizationId: activeOrg.data?.id ?? "" });
-      await activeOrg.refetch?.();
-      await orgs.refetch?.();
+      if (!next || next === originalOrgName || !activeOrgId) return;
+      await authClient.organization.update({ data: { name: next }, organizationId: activeOrgId ?? "" });
+      await refetchActiveOrg?.();
+      await refetchOrgs?.();
     },
     isDirty: () => ((orgNameRef.current?.value?.trim() || "") !== originalOrgName),
-  }), [originalOrgName, activeOrg.data?.id]);
+  }), [originalOrgName, activeOrgId, refetchActiveOrg, refetchOrgs]);
   const [editing] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"member" | "admin" | "owner">("member");

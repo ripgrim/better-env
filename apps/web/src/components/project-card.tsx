@@ -58,7 +58,7 @@ export function ProjectCard({
                   <RefreshCWIcon size={18} className="w-4 h-4 text-text-tertiary" />
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Refresh '{name}'</p>
+                  <p>Refresh &apos;{name}&apos;</p>
                 </TooltipContent>
               </Tooltip>        </div>
       

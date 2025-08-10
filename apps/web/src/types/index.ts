@@ -63,3 +63,8 @@ export type CreateProjectPayload = {
   organizationId?: string;
   envs?: { key: string; value: string; description?: string; environmentName?: string }[];
 };
+
+export type SaveController = {
+  save: () => Promise<void>;
+  isDirty: () => boolean;
+};

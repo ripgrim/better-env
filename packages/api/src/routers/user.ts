@@ -139,4 +139,27 @@ export const userRouter = router({
   // admin mutations removed for bare boilerplate
 
   // admin list/update removed for bare boilerplate
+  updateCurrentUserName: protectedProcedure
+    .input(z.object({ name: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const [existing] = await db
+          .select({ id: user.id })
+          .from(user)
+          .where(eq(user.id, ctx.session.user.id))
+          .limit(1);
+        if (!existing) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+        }
+        const [updated] = await db
+          .update(user)
+          .set({ name: input.name, updatedAt: new Date() })
+          .where(eq(user.id, ctx.session.user.id))
+          .returning();
+        return { success: true, data: updated };
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to update user name" });
+      }
+    }),
 });
