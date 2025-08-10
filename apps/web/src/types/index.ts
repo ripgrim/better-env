@@ -40,3 +40,12 @@ export type Project = {
   envs?: EnvVar[];
   envCount?: number;
 };
+
+export type AppError = {
+  message?: string;
+  code?: string;
+  error?: {
+    code?: string;
+    message?: string;
+  };
+};

@@ -193,8 +193,9 @@ function InvitationsList({ list, onRefetch }: InvitationsListProps) {
                       await authClient.organization.inviteMember({ email: inv.email, role: "member", resend: true, organizationId: activeOrg.data?.id });
                       toast.success("Invite resent");
                       await onRefetch();
-                    } catch (e: any) {
-                      toast.error(e?.error?.message || e?.message || "Failed to resend");
+                    } catch (e: unknown) {
+                      const er = e as { error?: { message?: string }; message?: string };
+                      toast.error(er?.error?.message || er?.message || "Failed to resend");
                     } finally {
                       setLoadingId(null);
                     }
@@ -212,8 +213,9 @@ function InvitationsList({ list, onRefetch }: InvitationsListProps) {
                       await authClient.organization.cancelInvitation({ invitationId: inv.id });
                       toast.success("Invite canceled");
                       onRefetch();
-                    } catch (e: any) {
-                      toast.error(e?.error?.message || e?.message || "Failed to cancel");
+                    } catch (e: unknown) {
+                      const er = e as { error?: { message?: string }; message?: string };
+                      toast.error(er?.error?.message || er?.message || "Failed to cancel");
                     } finally {
                       setLoadingId(null);
                     }
