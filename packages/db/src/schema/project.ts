@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { pgTable, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
-import { user } from "./auth";
+import { user, organization } from "./auth";
 
 export const project = pgTable(
   "project",
@@ -11,6 +11,9 @@ export const project = pgTable(
     ownerId: text("owner_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
+    organizationId: text("organization_id").references(() => organization.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at").notNull().default(sql`now()`),
     updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
   },
@@ -18,6 +21,10 @@ export const project = pgTable(
     return {
       ownerNameUnique: uniqueIndex("project_owner_name_unique").on(
         table.ownerId,
+        table.name
+      ),
+      orgNameUnique: uniqueIndex("project_org_name_unique").on(
+        table.organizationId,
         table.name
       ),
     };

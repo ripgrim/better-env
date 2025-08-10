@@ -35,6 +35,7 @@ export type Project = {
   name: string;
   logoUrl?: string | null;
   ownerId?: string;
+  organizationId?: string | null;
   createdAt?: string;
   updatedAt?: string;
   envs?: EnvVar[];
@@ -48,4 +49,17 @@ export type AppError = {
     code?: string;
     message?: string;
   };
+};
+
+export type ProjectsListData = {
+  personal: Project[];
+  org: Project[];
+  orgs?: { organizationId: string; organizationName: string | null; projects: Project[] }[];
+};
+
+export type CreateProjectPayload = {
+  name: string;
+  logoUrl?: string;
+  organizationId?: string;
+  envs?: { key: string; value: string; description?: string; environmentName?: string }[];
 };

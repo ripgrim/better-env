@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://better-env.com'),
+  metadataBase: new URL('https://better-env.com'),  
   title: "better-env",
   description: "Ship faster. Get paid instantly.",
   icons: {

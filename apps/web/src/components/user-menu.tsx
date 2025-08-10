@@ -1,59 +1,98 @@
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
+  DropdownMenuSubContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+
+import Image from "next/image";
+
 import { authClient } from "@better-env/auth/client";
-import { Button } from "./ui/button";
 import { Skeleton } from "./ui/skeleton";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { LINKS } from "@/constants/links";
+import { useTheme } from "next-themes";
+import { Check } from "lucide-react";
+import { trpc, queryClient } from "@/utils/trpc";
 
 export default function UserMenu() {
+  const session = authClient.useSession();
+  const { setTheme } = useTheme();
   const router = useRouter();
-  const { data: session, isPending } = authClient.useSession();
-
-  if (isPending) {
-    return <Skeleton className="h-9 w-24" />;
-  }
-
-  if (!session) {
-    return (
-      <Button variant="outline" asChild>
-        <Link href={LINKS.LOGIN}>Sign In</Link>
-      </Button>
-    );
+  const activeOrg = authClient.useActiveOrganization();
+  const orgs = authClient.useListOrganizations();
+  if (session.isPending) {
+    return <Skeleton className="h-9 w-9 rounded-full" />;
   }
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline">{session.user.name}</Button>
+        <Image
+          src={session.data?.user?.image || "/placeholder.svg?height=32&width=32"}
+          width={32}
+          height={32}
+          alt="User Avatar"
+          className="rounded-full"
+        />
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="bg-card">
+      <DropdownMenuContent className="w-56" align="start">
         <DropdownMenuLabel>My Account</DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuItem onClick={() => router.push("/profile")}>
+            Profile
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>{session.user.email}</DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Button
-            variant="destructive"
-            className="w-full"
-            onClick={() => {
-              authClient.signOut({
-                fetchOptions: {
-                  onSuccess: () => {
-                    router.push("/login");
-                  },
-                },
-              });
-            }}
-          >
-            Sign Out
-          </Button>
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>Workspace</DropdownMenuSubTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuSubContent>
+              <DropdownMenuItem
+                onClick={async () => {
+                  await authClient.organization.setActive({ organizationId: null as unknown as string });
+                  queryClient.invalidateQueries({ queryKey: trpc.projects.list.queryKey() });
+                  router.refresh();
+                }}
+              >
+                {!activeOrg.data?.id && <Check className="mr-2 h-4 w-4" />} Personal workspace
+              </DropdownMenuItem>
+              {Array.isArray(orgs.data) && orgs.data.map((o) => (
+                <DropdownMenuItem
+                  key={o.id}
+                  onClick={async () => {
+                    if (activeOrg.data?.id === o.id) return;
+                    await authClient.organization.setActive({ organizationId: o.id });
+                    queryClient.invalidateQueries({ queryKey: trpc.projects.list.queryKey() });
+                    router.refresh();
+                  }}
+                >
+                  {activeOrg.data?.id === o.id && <Check className="mr-2 h-4 w-4" />} {o.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuSubContent>
+          </DropdownMenuPortal>
+        </DropdownMenuSub>
+        <DropdownMenuSeparator />
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>Theme</DropdownMenuSubTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuSubContent>
+              <DropdownMenuItem onClick={() => setTheme("light")}>Light</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("dark")}>Dark</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("system")}>System</DropdownMenuItem>
+            </DropdownMenuSubContent>
+          </DropdownMenuPortal>
+        </DropdownMenuSub>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => authClient.signOut()}>
+          Log out
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -3,18 +3,24 @@
 import { useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { createProjectSchema, type CreateProjectInput } from "./forms";
+import { createProjectSchema, type CreateProjectInput, type EnvVarInput } from "./forms";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/utils/trpc";
-import { useMutation, useQueryClient, type UseMutationOptions } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { authClient } from "@better-env/auth/client";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+ 
 
 export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const [submitting, setSubmitting] = useState(false);
   const queryClient = useQueryClient();
+  const activeOrg = authClient.useActiveOrganization();
+  const orgs = authClient.useListOrganizations();
   const form = useForm<CreateProjectInput>({
     resolver: zodResolver(createProjectSchema),
     defaultValues: { name: "", logoUrl: "", envs: [] },
@@ -24,6 +30,8 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
   const [keyEntry, setKeyEntry] = useState("");
   const [valueEntry, setValueEntry] = useState("");
   const [selectedEnv, setSelectedEnv] = useState("development");
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
+  const displayOrgId = selectedOrgId ?? (activeOrg.data?.id ?? "__personal");
 
   function parseEnv(content: string) {
     const lines = content.split(/\r?\n/);
@@ -53,11 +61,12 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
     const parsed = parseEnv(text);
     if (!parsed.length) return;
     if (parsed.length > 1) {
-      const existing = (form.getValues("envs") || []) as { key: string; value: string; environmentName?: string }[];
-      const mapped = parsed
+      const existing = form.getValues("envs") ?? [];
+      const mapped: EnvVarInput[] = parsed
         .filter((v) => v.key)
         .map((v) => ({ key: v.key, value: v.value, environmentName: selectedEnv }));
-      replace([...(existing as { key: string; value: string; environmentName?: string }[]), ...(mapped as { key: string; value: string; environmentName?: string }[])]);
+      const next: EnvVarInput[] = [...existing, ...mapped];
+      replace(next);
       setKeyEntry("");
       setValueEntry("");
       toast.success("Imported variables");
@@ -71,22 +80,20 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
     const k = keyEntry.trim();
     const v = valueEntry;
     if (!k || !v) return;
-    append({ key: k, value: v, environmentName: selectedEnv } as { key: string; value: string; environmentName?: string });
+    append({ key: k, value: v, environmentName: selectedEnv });
     setKeyEntry("");
     setValueEntry("");
   }
 
-  type CreateVars = { name: string; logoUrl?: string; envs?: { key: string; value: string; description?: string; environmentName?: string }[] };
-  const createMutation = useMutation<unknown, unknown, CreateVars>({
-    ...(trpc.projects.create.mutationOptions() as unknown as UseMutationOptions<unknown, unknown, CreateVars, unknown>),
+  const createMutation = useMutation({
+    ...trpc.projects.create.mutationOptions(),
     onSuccess: () => {
       toast.success("Project created");
       queryClient.invalidateQueries({ queryKey: trpc.projects.list.queryKey() });
       onOpenChange(false);
     },
-    onError: (err: unknown) => {
-      const e = err as { message?: string };
-      const msg = e?.message || "Failed to create project";
+    onError: (error) => {
+      const msg = error?.message || "Failed to create project";
       form.setError("name", { type: "server", message: msg });
       toast.error(msg);
     },
@@ -101,15 +108,34 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
         <form
           onSubmit={form.handleSubmit(async (values) => {
             setSubmitting(true);
-    let envs: { key: string; value: string; environmentName?: string }[] = (form.getValues("envs") || []) as { key: string; value: string; environmentName?: string }[];
+            let envs: EnvVarInput[] = form.getValues("envs") ?? [];
             if (keyEntry.trim() && valueEntry) {
               envs = [...envs, { key: keyEntry.trim(), value: valueEntry, environmentName: selectedEnv }];
             }
-            await createMutation.mutateAsync({ name: values.name, logoUrl: values.logoUrl || undefined, envs });
+            await createMutation.mutateAsync({ name: values.name, logoUrl: values.logoUrl || undefined, organizationId: displayOrgId === "__personal" ? undefined : displayOrgId, envs });
             setSubmitting(false);
           })}
           className="space-y-4"
         >
+          <div className="space-y-2">
+            <Label>Organization</Label>
+            <Select value={displayOrgId} onValueChange={(v) => setSelectedOrgId(v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select organization" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__personal">Personal workspace</SelectItem>
+                {Array.isArray(orgs.data) && orgs.data.map((o) => (
+                  <SelectItem key={o.id} value={o.id}>
+                    <span className="inline-flex items-center gap-2">
+                      {o.name}
+                      {activeOrg.data?.id === o.id && <Badge variant="secondary">Active</Badge>}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="space-y-2 mt-4">
             <Label htmlFor="name">Name</Label>
             <Input id="name" placeholder="my-app" {...form.register("name")} aria-invalid={!!form.formState.errors.name} />

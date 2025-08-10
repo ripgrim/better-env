@@ -1,9 +1,9 @@
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, count } from "drizzle-orm";
+import { and, desc, eq, count, isNull, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { randomUUID } from "node:crypto";
 
-import { db, project, environmentVariable } from "@better-env/db";
+import { db, project, environmentVariable, member, organization } from "@better-env/db";
 import { grim } from "../lib/use-dev-log";
 const { info } = grim();
 import { protectedProcedure, router } from "../trpc";
@@ -23,12 +23,14 @@ export const projectsRouter = router({
         name: z.string().min(1),
         logoUrl: z.string().url().optional(),
         envs: z.array(envVarInput).optional(),
+        organizationId: z.string().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
       try {
         info("[projects.create]", { userId: ctx.session.user.id, input });
         const newProjectId = randomUUID();
+        const activeOrgId = (ctx.session as { activeOrganizationId?: string } | null)?.activeOrganizationId || input.organizationId;
         const [created] = await db
           .insert(project)
           .values({
@@ -36,6 +38,7 @@ export const projectsRouter = router({
             name: input.name,
             logoUrl: input.logoUrl,
             ownerId: ctx.session.user.id,
+            organizationId: activeOrgId ?? null,
           })
           .returning();
 
@@ -74,30 +77,97 @@ export const projectsRouter = router({
       }
     }),
 
-  list: protectedProcedure.query(async ({ ctx }) => {
+  list: protectedProcedure
+    .input(z.object({ organizationId: z.string().nullable().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+    const requestedOrgId = (input?.organizationId ?? null) as string | null;
+    const activeOrgId = requestedOrgId || ((ctx.session as { activeOrganizationId?: string } | null)?.activeOrganizationId ?? null);
+    const selectBase = () =>
+      db
+        .select({
+          id: project.id,
+          name: project.name,
+          logoUrl: project.logoUrl,
+          ownerId: project.ownerId,
+          organizationId: project.organizationId,
+          createdAt: project.createdAt,
+          updatedAt: project.updatedAt,
+          envCount: count(environmentVariable.id).as("envCount"),
+        })
+        .from(project)
+        .leftJoin(environmentVariable, eq(environmentVariable.projectId, project.id))
+        .groupBy(project.id);
+
+    const personal = await selectBase()
+      .where(and(eq(project.ownerId, ctx.session.user.id), isNull(project.organizationId)))
+      .orderBy(desc(project.createdAt));
+
+    const org = activeOrgId
+      ? await selectBase()
+          .where(eq(project.organizationId, activeOrgId))
+          .orderBy(desc(project.createdAt))
+      : [];
+
+    const memberships = await db
+      .select({ orgId: member.organizationId, name: organization.name })
+      .from(member)
+      .leftJoin(organization, eq(organization.id, member.organizationId))
+      .where(eq(member.userId, ctx.session.user.id));
+
+    const orgIds = memberships.map((m) => m.orgId).filter(Boolean) as string[];
+    let orgs: { organizationId: string; organizationName: string | null; projects: typeof org }[] = [];
+    if (orgIds.length > 0) {
+      const all = await selectBase()
+        .where(inArray(project.organizationId, orgIds))
+        .orderBy(desc(project.createdAt));
+      const byId = new Map<string, { organizationId: string; organizationName: string | null; projects: typeof all }>();
+      for (const m of memberships) {
+        if (!m.orgId) continue;
+        byId.set(m.orgId, { organizationId: m.orgId, organizationName: m.name ?? null, projects: [] });
+      }
+      for (const p of all) {
+        if (!p.organizationId) continue;
+        const bucket = byId.get(p.organizationId);
+        if (bucket) bucket.projects.push(p);
+      }
+      orgs = Array.from(byId.values());
+    }
+
+    return { success: true, data: { personal, org, orgs } };
+  }),
+
+  debugAll: protectedProcedure.query(async ({ ctx }) => {
+    if (process.env.NODE_ENV === "production") {
+      throw new TRPCError({ code: "FORBIDDEN", message: "Not available in production" });
+    }
     const rows = await db
       .select({
         id: project.id,
         name: project.name,
         logoUrl: project.logoUrl,
         ownerId: project.ownerId,
+        organizationId: project.organizationId,
         createdAt: project.createdAt,
         updatedAt: project.updatedAt,
         envCount: count(environmentVariable.id).as("envCount"),
       })
       .from(project)
       .leftJoin(environmentVariable, eq(environmentVariable.projectId, project.id))
-      .where(eq(project.ownerId, ctx.session.user.id))
       .groupBy(project.id)
       .orderBy(desc(project.createdAt));
     return { success: true, data: rows };
   }),
 
   get: protectedProcedure.input(z.object({ id: z.string() })).query(async ({ ctx, input }) => {
+    const activeOrgId = (ctx.session as { activeOrganizationId?: string } | null)?.activeOrganizationId;
     const [row] = await db
       .select()
       .from(project)
-      .where(and(eq(project.id, input.id), eq(project.ownerId, ctx.session.user.id)))
+      .where(
+        activeOrgId
+          ? and(eq(project.id, input.id), eq(project.organizationId, activeOrgId))
+          : and(eq(project.id, input.id), eq(project.ownerId, ctx.session.user.id), isNull(project.organizationId))
+      )
       .limit(1);
     if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
 
@@ -119,10 +189,16 @@ export const projectsRouter = router({
       z.object({ id: z.string(), name: z.string().min(1).optional(), logoUrl: z.string().url().optional() })
     )
     .mutation(async ({ ctx, input }) => {
+      const activeOrgId = (ctx.session as { activeOrganizationId?: string } | null)?.activeOrganizationId;
       const [existing] = await db
         .select({ id: project.id })
         .from(project)
-        .where(and(eq(project.id, input.id), eq(project.ownerId, ctx.session.user.id)))
+        .where(
+          and(
+            eq(project.id, input.id),
+            activeOrgId ? eq(project.organizationId, activeOrgId) : eq(project.ownerId, ctx.session.user.id)
+          )
+        )
         .limit(1);
       if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
 
@@ -135,10 +211,16 @@ export const projectsRouter = router({
     }),
 
   delete: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ ctx, input }) => {
+    const activeOrgId = (ctx.session as { activeOrganizationId?: string } | null)?.activeOrganizationId;
     const [existing] = await db
       .select({ id: project.id })
       .from(project)
-      .where(and(eq(project.id, input.id), eq(project.ownerId, ctx.session.user.id)))
+      .where(
+        and(
+          eq(project.id, input.id),
+          activeOrgId ? eq(project.organizationId, activeOrgId) : eq(project.ownerId, ctx.session.user.id)
+        )
+      )
       .limit(1);
     if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
 
@@ -150,10 +232,16 @@ export const projectsRouter = router({
     add: protectedProcedure
       .input(z.object({ projectId: z.string(), env: envVarInput }))
       .mutation(async ({ ctx, input }) => {
+        const activeOrgId = (ctx.session as { activeOrganizationId?: string } | null)?.activeOrganizationId;
         const [own] = await db
           .select({ id: project.id })
           .from(project)
-          .where(and(eq(project.id, input.projectId), eq(project.ownerId, ctx.session.user.id)))
+          .where(
+            and(
+              eq(project.id, input.projectId),
+              activeOrgId ? eq(project.organizationId, activeOrgId) : eq(project.ownerId, ctx.session.user.id)
+            )
+          )
           .limit(1);
         if (!own) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
 
@@ -192,10 +280,16 @@ export const projectsRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
+        const activeOrgId = (ctx.session as { activeOrganizationId?: string } | null)?.activeOrganizationId;
         const [own] = await db
           .select({ id: project.id })
           .from(project)
-          .where(and(eq(project.id, input.projectId), eq(project.ownerId, ctx.session.user.id)))
+          .where(
+            and(
+              eq(project.id, input.projectId),
+              activeOrgId ? eq(project.organizationId, activeOrgId) : eq(project.ownerId, ctx.session.user.id)
+            )
+          )
           .limit(1);
         if (!own) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
 
@@ -229,10 +323,16 @@ export const projectsRouter = router({
     delete: protectedProcedure
       .input(z.object({ id: z.string(), projectId: z.string() }))
       .mutation(async ({ ctx, input }) => {
+        const activeOrgId = (ctx.session as { activeOrganizationId?: string } | null)?.activeOrganizationId;
         const [own] = await db
           .select({ id: project.id })
           .from(project)
-          .where(and(eq(project.id, input.projectId), eq(project.ownerId, ctx.session.user.id)))
+          .where(
+            and(
+              eq(project.id, input.projectId),
+              activeOrgId ? eq(project.organizationId, activeOrgId) : eq(project.ownerId, ctx.session.user.id)
+            )
+          )
           .limit(1);
         if (!own) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
 

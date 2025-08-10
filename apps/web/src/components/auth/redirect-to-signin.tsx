@@ -2,6 +2,7 @@
 
 import { authClient } from "@better-env/auth/client";
 import { useEffect } from "react";
+import { Spinner } from "../ui/spinner";
 
 export default function RedirectToSignIn() {
     const { data: session, isPending } = authClient.useSession();
@@ -16,7 +17,7 @@ export default function RedirectToSignIn() {
     }, [session, isPending]);
 
     if (isPending) {
-        return <div>Loading...</div>;
+        return <div className="flex h-screen items-center justify-center"><Spinner size={24} /></div>;
     }
 
     return null;

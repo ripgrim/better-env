@@ -2,6 +2,7 @@
 import { ProjectLogo } from './project-logo'
 import { DeviceBubbles } from './device-bubbles'
 import { RefreshCWIcon } from './ui/refresh-cw'
+import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip'
 
 interface Device {
   name: string
@@ -52,8 +53,14 @@ export function ProjectCard({
           <ProjectLogo name={name} logoUrl={logoUrl} />
           <h3 className="text-text-primary text-lg font-medium tracking-tight">{name}</h3>
         </div>
-        <RefreshCWIcon size={18} className="w-4 h-4 text-text-tertiary group-hover:text-text-secondary transition-colors duration-200" />
-      </div>
+        <Tooltip>
+                <TooltipTrigger>
+                  <RefreshCWIcon size={18} className="w-4 h-4 text-text-tertiary" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Refresh '{name}'</p>
+                </TooltipContent>
+              </Tooltip>        </div>
       
       <div className="flex items-center justify-between mb-4">
         <DeviceBubbles devices={devices} />
