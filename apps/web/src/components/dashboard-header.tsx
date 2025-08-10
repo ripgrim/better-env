@@ -7,8 +7,10 @@ import { User } from "better-auth"
 import { DropdownMenu, DropdownMenuItem, DropdownMenuContent, DropdownMenuTrigger } from "./ui/dropdown-menu"
 import { ModeToggle } from "./mode-toggle"
 import { authClient } from "@better-env/auth/client"
+import { useRouter } from "next/navigation";
 
 export function DashboardHeader({ session }: { session: User | null }) {
+  const router = useRouter();
   return (
     <header className="bg-card border-b border-border-subtle px-8 py-6">
       <div className="max-w-7xl mx-auto flex items-center justify-end gap-4">
@@ -36,12 +38,18 @@ export function DashboardHeader({ session }: { session: User | null }) {
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               <DropdownMenuItem>
-                <Button variant="text" className="text-text-secondary text-sm px-3 py-2 h-auto hover:bg-accent hover:text-text-primary transition-colors duration-200 font-normal">
+                <Button onClick={() => router.push("/profile")} variant="text" className="text-text-secondary text-sm px-3 py-2 h-auto hover:bg-accent hover:text-text-primary transition-colors duration-200 font-normal">
                   Profile
                 </Button>
               </DropdownMenuItem>
               <DropdownMenuItem>
-                <Button onClick={() => authClient.signOut()} variant="text" className="text-text-secondary text-sm px-3 py-2 h-auto hover:bg-accent hover:text-text-primary transition-colors duration-200 font-normal">
+                <Button onClick={() => authClient.signOut({
+                  fetchOptions: {
+                    onSuccess: () => {
+                      router.push("/login");
+                    },
+                  },
+                })} variant="text" className="text-text-secondary text-sm px-3 py-2 h-auto hover:bg-accent hover:text-text-primary transition-colors duration-200 font-normal">
                   Sign out
                 </Button>
               </DropdownMenuItem>

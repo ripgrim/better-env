@@ -15,6 +15,10 @@ export const auth = betterAuth({
     schema: schema,
     usePlural: false,
   }),
+  trustedOrigins: [
+    "http://localhost:3000",
+    "https://better-env.com",
+  ],
   socialProviders: {
     github: {
       clientId: process.env.GITHUB_CLIENT_ID as string,
