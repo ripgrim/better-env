@@ -1,17 +1,7 @@
 "use client";
 
 import { ComponentProps } from "react";
-import {
-  AudioWaveform,
-  Award,
-  BookOpen, Command,
-  FileUser,
-  Frame,
-  GalleryVerticalEnd,
-  Map,
-  PieChart,
-  Settings2
-} from "lucide-react";
+import { AudioWaveform, BookOpen, Command, Frame, GalleryVerticalEnd, Map, PieChart, Settings2 } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -27,12 +17,12 @@ import Bookmark from "../icons/bookmark";
 import Logo from "../icons/logo";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import { trpc } from "@/utils/trpc";
+// import { useQuery } from "@tanstack/react-query";
+// import { trpc } from "@/utils/trpc";
 
 export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
-  const health = useQuery(trpc.healthCheck.queryOptions());
+  // const health = useQuery(trpc.healthCheck.queryOptions());
 
   function isActive(path: string) {
     return pathname === path;
@@ -160,34 +150,7 @@ export function AppSidebar({ ...props }: ComponentProps<typeof Sidebar>) {
     ],
   };
 
-  const betaData = {
-    user: {
-      name: "shadcn",
-      email: "m@example.com",
-      avatar: "/avatars/shadcn.jpg",
-    },
-    teams: [
-      {
-        name: "Mail0 Inc.",
-        logo: GalleryVerticalEnd,
-        logoUrl: "https://0.email/white-icon.svg",
-        plan: "Enterprise",
-      },
-      {
-        name: "oss.now",
-        logo: AudioWaveform,
-        logoUrl: "https://oss.now/logo.png",
-        plan: "Startup",
-      },
-      {
-        name: "Inbound.new",
-        logo: Command,
-        logoUrl: "https://inbound.new/_next/image?url=https%3A%2F%2Finbound.new%2Finbound-logo-3.png&w=64&q=75",
-        plan: "Free",
-      },
-    ],
-    navMain: [],
-  }
+  // beta data removed
 
   const user = {
     name: "Guest",

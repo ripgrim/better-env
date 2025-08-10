@@ -16,7 +16,8 @@
   "dependencies": {
     "better-auth": "1.3.0",
     "@better-env/db": "workspace:*",
-    "@better-env/env": "workspace:*"
+    "@better-env/env": "workspace:*",
+    "resend": "^4.0.0"
   },
   "devDependencies": {
     "typescript": "^5"

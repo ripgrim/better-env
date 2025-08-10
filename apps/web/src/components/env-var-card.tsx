@@ -43,7 +43,7 @@ export function EnvVarCard({ envVar, forceShow = false }: EnvVarCardProps) {
           <div className="flex items-center gap-3 mb-2">
             <h3 className="text-text-primary font-medium text-base tracking-tight">{envVar.key}</h3>
             <Button
-              variant="ghost"
+              variant="text"
               size="sm"
               onClick={() => setIsVisible(!isVisible)}
               className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 h-auto hover:bg-accent"
@@ -71,7 +71,7 @@ export function EnvVarCard({ envVar, forceShow = false }: EnvVarCardProps) {
             {shouldShow && (
               <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <Button
-                  variant="ghost"
+                  variant="text"
                   size="sm"
                   onClick={() => handleCopy(envVar.value)}
                   className="p-1 h-auto hover:bg-background"
@@ -85,7 +85,7 @@ export function EnvVarCard({ envVar, forceShow = false }: EnvVarCardProps) {
         
         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
           <Button
-            variant="ghost"
+            variant="text"
             size="sm"
             className="p-2 h-auto hover:bg-accent"
           >

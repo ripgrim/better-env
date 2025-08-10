@@ -8,10 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/utils/trpc";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, type UseMutationOptions } from "@tanstack/react-query";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Textarea } from "@/components/ui/textarea";
 
 export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const [submitting, setSubmitting] = useState(false);
@@ -21,9 +20,10 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
     defaultValues: { name: "", logoUrl: "", envs: [] },
   });
 
-  const { fields, remove, replace } = useFieldArray({ control: form.control, name: "envs" });
-  const [keysText, setKeysText] = useState("");
-  const [valuesText, setValuesText] = useState("");
+  const { fields, remove, replace, append } = useFieldArray({ control: form.control, name: "envs" });
+  const [keyEntry, setKeyEntry] = useState("");
+  const [valueEntry, setValueEntry] = useState("");
+  const [selectedEnv, setSelectedEnv] = useState("development");
 
   function parseEnv(content: string) {
     const lines = content.split(/\r?\n/);
@@ -34,50 +34,59 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
       if (line.startsWith("#")) continue;
       const eqIndex = line.indexOf("=");
       if (eqIndex === -1) {
-        vars.push({ key: line, value: "" });
+        const k = line.replace(/^export\s+/, "").trim();
+        if (!k) continue;
+        vars.push({ key: k, value: "" });
       } else {
         const key = line.slice(0, eqIndex).replace(/^export\s+/, "").trim();
-        const value = line.slice(eqIndex + 1);
+        let value = line.slice(eqIndex + 1);
+        if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.slice(1, -1);
+        }
         vars.push({ key, value });
       }
     }
     return vars;
   }
 
-  function handlePaste(text: string) {
+  function handlePasteText(text: string) {
     const parsed = parseEnv(text);
-    if (parsed.length) {
-      replace(parsed.map((v) => ({ key: v.key, value: v.value })) as any);
-      setKeysText(parsed.map((v) => v.key).join("\n"));
-      setValuesText(parsed.map((v) => v.value).join("\n"));
+    if (!parsed.length) return;
+    if (parsed.length > 1) {
+      const existing = (form.getValues("envs") || []) as { key: string; value: string; environmentName?: string }[];
+      const mapped = parsed
+        .filter((v) => v.key)
+        .map((v) => ({ key: v.key, value: v.value, environmentName: selectedEnv }));
+      replace([...(existing as { key: string; value: string; environmentName?: string }[]), ...(mapped as { key: string; value: string; environmentName?: string }[])]);
+      setKeyEntry("");
+      setValueEntry("");
       toast.success("Imported variables");
+    } else {
+      setKeyEntry(parsed[0].key);
+      setValueEntry(parsed[0].value);
     }
   }
 
-  function composeFromTwoBoxes() {
-    const kLines = keysText.split(/\r?\n/);
-    const vLines = valuesText.split(/\r?\n/);
-    const max = Math.max(kLines.length, vLines.length);
-    const entries: { key: string; value: string }[] = [];
-    for (let i = 0; i < max; i++) {
-      const k = (kLines[i] || "").trim();
-      const v = (vLines[i] || "").trim();
-      if (!k) continue;
-      entries.push({ key: k, value: v });
-    }
-    replace(entries as any);
-    return entries;
+  function addPair() {
+    const k = keyEntry.trim();
+    const v = valueEntry;
+    if (!k || !v) return;
+    append({ key: k, value: v, environmentName: selectedEnv } as { key: string; value: string; environmentName?: string });
+    setKeyEntry("");
+    setValueEntry("");
   }
 
-  const createMutation = useMutation({
-    ...trpc.projects.create.mutationOptions(),
+  type CreateVars = { name: string; logoUrl?: string; envs?: { key: string; value: string; description?: string; environmentName?: string }[] };
+  const createMutation = useMutation<unknown, unknown, CreateVars>({
+    ...(trpc.projects.create.mutationOptions() as unknown as UseMutationOptions<unknown, unknown, CreateVars, unknown>),
     onSuccess: () => {
       toast.success("Project created");
       queryClient.invalidateQueries({ queryKey: trpc.projects.list.queryKey() });
       onOpenChange(false);
     },
-    onError: (err: any) => {
-      const msg = err?.message || "Failed to create project";
+    onError: (err: unknown) => {
+      const e = err as { message?: string };
+      const msg = e?.message || "Failed to create project";
       form.setError("name", { type: "server", message: msg });
       toast.error(msg);
     },
@@ -92,13 +101,16 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
         <form
           onSubmit={form.handleSubmit(async (values) => {
             setSubmitting(true);
-            const composed = composeFromTwoBoxes();
-            await createMutation.mutateAsync({ name: values.name, logoUrl: values.logoUrl || undefined, envs: composed });
+    let envs: { key: string; value: string; environmentName?: string }[] = (form.getValues("envs") || []) as { key: string; value: string; environmentName?: string }[];
+            if (keyEntry.trim() && valueEntry) {
+              envs = [...envs, { key: keyEntry.trim(), value: valueEntry, environmentName: selectedEnv }];
+            }
+            await createMutation.mutateAsync({ name: values.name, logoUrl: values.logoUrl || undefined, envs });
             setSubmitting(false);
           })}
           className="space-y-4"
         >
-          <div className="space-y-2 mt-4" >
+          <div className="space-y-2 mt-4">
             <Label htmlFor="name">Name</Label>
             <Input id="name" placeholder="my-app" {...form.register("name")} aria-invalid={!!form.formState.errors.name} />
             {form.formState.errors.name && <p className="text-red-500 text-sm">{form.formState.errors.name.message}</p>}
@@ -110,11 +122,20 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
           </div>
           <div className="space-y-2">
             <Label htmlFor="envName">Default Environment</Label>
-            <select id="envName" className="w-full border rounded-md px-3 py-2 bg-transparent" defaultValue="development" onChange={(e) => {
-              const env = e.target.value;
-              const current = form.getValues("envs") || [];
-              form.setValue("envs", current.map((v) => ({ ...v, environmentName: env })) as any);
-            }}>
+            <select
+              id="envName"
+              className="w-full border rounded-md px-3 py-2 bg-transparent"
+              value={selectedEnv}
+              onChange={(e) => {
+                const env = e.target.value;
+                setSelectedEnv(env);
+                const current = (form.getValues("envs") || []) as { key: string; value: string; environmentName?: string }[];
+                form.setValue(
+                  "envs",
+                  current.map((v) => ({ ...v, environmentName: env }))
+                );
+              }}
+            >
               <option value="production">Production</option>
               <option value="preview">Preview</option>
               <option value="development">Development</option>
@@ -127,15 +148,14 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
               <div className="space-y-1">
                 <div className="text-sm text-muted-foreground">Key</div>
                 <Input
-                  placeholder={`DATABASE_URL`}
-                  value={keysText}
-                  onChange={(e) => setKeysText(e.target.value)}
-                  onBlur={() => composeFromTwoBoxes()}
+                  placeholder="DATABASE_URL"
+                  value={keyEntry}
+                  onChange={(e) => setKeyEntry(e.target.value)}
                   onPaste={(e) => {
                     const text = e.clipboardData.getData("text");
                     if (text.includes("\n") || text.includes("=")) {
                       e.preventDefault();
-                      handlePaste(text);
+                      handlePasteText(text);
                     }
                   }}
                 />
@@ -143,19 +163,23 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
               <div className="space-y-1">
                 <div className="text-sm text-muted-foreground">Value</div>
                 <Input
-                  placeholder={`postgresql://...`}
-                  value={valuesText}
-                  onChange={(e) => setValuesText(e.target.value)}
-                  onBlur={() => composeFromTwoBoxes()}
+                  placeholder="postgresql://..."
+                  value={valueEntry}
+                  onChange={(e) => setValueEntry(e.target.value)}
                   onPaste={(e) => {
                     const text = e.clipboardData.getData("text");
                     if (text.includes("\n") || text.includes("=")) {
                       e.preventDefault();
-                      handlePaste(text);
+                      handlePasteText(text);
                     }
                   }}
                 />
               </div>
+            </div>
+            <div className="flex justify-end">
+              <Button type="button" onClick={addPair} disabled={!keyEntry.trim() || !valueEntry}>
+                Add another
+              </Button>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div className="text-sm text-muted-foreground">Key</div>

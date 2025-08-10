@@ -30,6 +30,8 @@ export const session = pgTable("session", {
   updatedAt: timestamp("updated_at").notNull().default(sql`now()`),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
+  activeOrganizationId: text("active_organization_id"),
+  activeTeamId: text("active_team_id"),
   userId: text("user_id")
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
@@ -68,4 +70,31 @@ export const waitlist = pgTable("waitlist", {
   createdAt: timestamp("created_at").notNull().default(sql`now()`),
   hasAccess: boolean("has_access").notNull().default(false),
   ipAddress: text("ip_address"),
+});
+
+export const organization = pgTable("organization", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull(),
+  logo: text("logo"),
+  metadata: text("metadata"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
+export const member = pgTable("member", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  organizationId: text("organization_id").notNull().references(() => organization.id, { onDelete: "cascade" }),
+  role: text("role").notNull(),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
+export const invitation = pgTable("invitation", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull(),
+  inviterId: text("inviter_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  organizationId: text("organization_id").notNull().references(() => organization.id, { onDelete: "cascade" }),
+  role: text("role").notNull(),
+  status: text("status").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
 });

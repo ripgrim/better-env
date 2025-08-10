@@ -5,10 +5,11 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "jsx": "react-jsx",
     "esModuleInterop": true,
     "skipLibCheck": true,
     "strict": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "src/emails/**/*"],
   "exclude": ["node_modules"]
 }

@@ -9,16 +9,12 @@ import { Input } from "@/components/ui/input"
 import { ProjectLogo } from './project-logo'
 import { useRouter } from 'next/navigation'
 import { trpc } from '@/utils/trpc'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { AddEnvDialog } from "@/components/dialogs/add-env-dialog"
 import { classifyEnvVar, type EnvCategory } from '@/lib/env-classifier'
+import type { Project, EnvVar as CoreEnvVar } from '@/types'
 
-interface EnvVar {
-  key: string
-  value: string
-  description?: string
-  category: string
-}
+type DisplayEnvVar = CoreEnvVar & { category: string }
 
 interface ProjectEnvPageProps {
   projectId: string
@@ -26,22 +22,15 @@ interface ProjectEnvPageProps {
 
 export function ProjectEnvPage({ projectId }: ProjectEnvPageProps) {
   const router = useRouter()
-  const qc = useQueryClient()
   const [searchQuery, setSearchQuery] = useState('')
   const [showAll, setShowAll] = useState(false)
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(['Authentication']))
   const [copiedItem, setCopiedItem] = useState<string | null>(null)
   const [openAdd, setOpenAdd] = useState(false)
+  const [runner, setRunner] = useState<'npx' | 'pnpm' | 'bunx'>('npx')
 
   const projectQuery = useQuery(trpc.projects.get.queryOptions({ id: projectId }))
-  const project = projectQuery.data?.data
-  const addEnv = useMutation({
-    ...trpc.projects.envs.add.mutationOptions(),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: trpc.projects.get.queryKey({ id: projectId }) })
-      setOpenAdd(false)
-    },
-  })
+  const project = projectQuery.data?.data as Project | undefined
 
   const handleCopy = async (text: string, item: string) => {
     try {
@@ -53,9 +42,9 @@ export function ProjectEnvPage({ projectId }: ProjectEnvPageProps) {
     }
   }
 
-  const envVars: EnvVar[] = useMemo(() => {
-    if (!project || !Array.isArray((project as any).envs)) return []
-    return ((project as any).envs as { key: string; value: string; environmentName?: string }[]).map(({ key, value, environmentName }) => {
+  const envVars: DisplayEnvVar[] = useMemo(() => {
+    if (!project || !Array.isArray(project.envs)) return []
+    return (project.envs as CoreEnvVar[]).map(({ key, value, environmentName }) => {
       const category = mapCategory(classifyEnvVar(key, value))
       const displayKey = environmentName && environmentName.toLowerCase().startsWith('prod') ? key : environmentName ? `${environmentName}.${key}` : key
       return { key: displayKey, value, description: undefined, category }
@@ -89,7 +78,7 @@ export function ProjectEnvPage({ projectId }: ProjectEnvPageProps) {
     if (!acc[envVar.category]) acc[envVar.category] = []
     acc[envVar.category].push(envVar)
     return acc
-  }, {} as Record<string, EnvVar[]>)
+  }, {} as Record<string, DisplayEnvVar[]>)
 
   const toggleGroup = (category: string) => {
     const newExpanded = new Set(expandedGroups)
@@ -101,8 +90,8 @@ export function ProjectEnvPage({ projectId }: ProjectEnvPageProps) {
     setExpandedGroups(newExpanded)
   }
 
-  const projectName = (project as any)?.name ?? projectId
-  const projectLogo = (project as any)?.logoUrl ?? ''
+  const projectName = project?.name || projectId
+  const projectLogo = (project as unknown as { logoUrl?: string })?.logoUrl ?? ''
 
   const maskValue = (value: string) => {
     if (value.length <= 8) return '•'.repeat(value.length)
@@ -158,18 +147,44 @@ export function ProjectEnvPage({ projectId }: ProjectEnvPageProps) {
         <div className="max-w-6xl mx-auto space-y-6">
           {/* CLI Command Box */}
           <div className="bg-card border border-border-light rounded-lg p-5 shadow-card">
-            <div className="flex items-start justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
                 <Terminal className="w-5 h-5 text-accent-blue" />
-                <h2 className="text-text-primary font-medium text-base">CLI Access</h2>
+                <h2 className="text-text-primary font-medium text-base">Pull envs with CLI</h2>
+              </div>
+              <div className="flex items-center gap-1 bg-secondary rounded-md p-1">
+                <Button
+                  variant="text"
+                  size="sm"
+                  className={`${runner === 'npx' ? 'bg-accent-blue text-primary-foreground' : 'text-text-secondary hover:text-text-primary'} px-2 py-1 rounded`}
+                  onClick={() => setRunner('npx')}
+                >
+                  npx
+                </Button>
+                <Button
+                  variant="text"
+                  size="sm"
+                  className={`${runner === 'pnpm' ? 'bg-accent-blue text-primary-foreground' : 'text-text-secondary hover:text-text-primary'} px-2 py-1 rounded`}
+                  onClick={() => setRunner('pnpm')}
+                >
+                  pnpm dlx
+                </Button>
+                <Button
+                  variant="text"
+                  size="sm"
+                  className={`${runner === 'bunx' ? 'bg-accent-blue text-primary-foreground' : 'text-text-secondary hover:text-text-primary'} px-2 py-1 rounded`}
+                  onClick={() => setRunner('bunx')}
+                >
+                  bunx
+                </Button>
               </div>
             </div>
-            
+
             <div className="space-y-3">
               <div className="flex items-center gap-3">
-                <span className="text-text-secondary text-sm font-medium min-w-20">Project ID:</span>
+                <span className="text-text-secondary text-sm font-medium min-w-20">Project ID</span>
                 <div className="flex items-center gap-2 flex-1">
-                   <code className="bg-secondary px-3 py-1.5 rounded-md text-sm font-mono text-text-primary flex-1">{project?.id}</code>
+                  <code className="bg-secondary px-3 py-1.5 rounded-md text-sm font-mono text-text-primary flex-1 overflow-x-auto">{project?.id}</code>
                   <Button
                     variant="text"
                     size="sm"
@@ -180,21 +195,26 @@ export function ProjectEnvPage({ projectId }: ProjectEnvPageProps) {
                   </Button>
                 </div>
               </div>
+
               <div className="flex items-center gap-3">
-                <span className="text-text-secondary text-sm font-medium min-w-20">Description:</span>
+                <span className="text-text-secondary text-sm font-medium min-w-20">Run this command</span>
                 <div className="flex items-center gap-2 flex-1">
-                  <span className="text-text-primary text-sm">{(project as any)?.description || '—'}</span>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                <span className="text-text-secondary text-sm font-medium min-w-20">Pull Command:</span>
-                <div className="flex items-center gap-2 flex-1">
-                  <code className="bg-secondary px-3 py-1.5 rounded-md text-sm font-mono text-text-primary flex-1">npx @better-env/cli@latest pull {project?.id}</code>
+                  <code className="bg-secondary px-3 py-1.5 rounded-md text-sm font-mono text-text-primary flex-1 overflow-x-auto">
+                    {runner === 'npx' && `npx @better-env/cli@latest pull ${project?.id ?? ''}`}
+                    {runner === 'pnpm' && `pnpm dlx @better-env/cli@latest pull ${project?.id ?? ''}`}
+                    {runner === 'bunx' && `bunx @better-env/cli@latest pull ${project?.id ?? ''}`}
+                  </code>
                   <Button
                     variant="text"
                     size="sm"
-                    onClick={() => handleCopy(`npx @better-env/cli@latest pull ${project?.id ?? ''}`,'pull-command')}
+                    onClick={() => {
+                      const cmd = runner === 'npx'
+                        ? `npx @better-env/cli@latest pull ${project?.id ?? ''}`
+                        : runner === 'pnpm'
+                        ? `pnpm dlx @better-env/cli@latest pull ${project?.id ?? ''}`
+                        : `bunx @better-env/cli@latest pull ${project?.id ?? ''}`
+                      handleCopy(cmd, 'pull-command')
+                    }}
                     className="p-1.5 h-auto hover:bg-accent"
                   >
                     {copiedItem === 'pull-command' ? <Check className="w-4 h-4 text-status-online" /> : <Copy className="w-4 h-4" />}
@@ -256,7 +276,7 @@ export function ProjectEnvPage({ projectId }: ProjectEnvPageProps) {
 }
 
 interface EnvVarRowProps {
-  envVar: EnvVar
+  envVar: DisplayEnvVar
   forceShow: boolean
   isLast: boolean
   onCopy: (text: string, item: string) => void

@@ -1,6 +1,7 @@
-import { RefreshCw } from 'lucide-react'
+
 import { ProjectLogo } from './project-logo'
 import { DeviceBubbles } from './device-bubbles'
+import { RefreshCWIcon } from './ui/refresh-cw'
 
 interface Device {
   name: string
@@ -31,14 +32,6 @@ export function ProjectCard({
       if (years >= 1) return `Created ${years.toLocaleString()} years ..... in the future?`;
     }
     const diffSec = Math.max(1, Math.floor((now - then) / 1000));
-    const units: [number, string][] = [
-      [60, "second"],
-      [60, "minute"],
-      [24, "hour"],
-      [7, "day"],
-      [4.2857142857, "week"],
-      [12, "month"],
-    ];
     let val = diffSec;
     let label = "second";
     let i = 0;
@@ -59,7 +52,7 @@ export function ProjectCard({
           <ProjectLogo name={name} logoUrl={logoUrl} />
           <h3 className="text-text-primary text-lg font-medium tracking-tight">{name}</h3>
         </div>
-        <RefreshCw className="w-4 h-4 text-text-tertiary group-hover:text-text-secondary transition-colors duration-200" />
+        <RefreshCWIcon size={18} className="w-4 h-4 text-text-tertiary group-hover:text-text-secondary transition-colors duration-200" />
       </div>
       
       <div className="flex items-center justify-between mb-4">

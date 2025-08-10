@@ -3,8 +3,7 @@
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 // import { SidebarTrigger } from "@/components/ui/sidebar";
-import { useQuery } from "@tanstack/react-query";
-import { trpc } from "@/utils/trpc";
+
 
 
 const navigationLinks = [
@@ -12,7 +11,7 @@ const navigationLinks = [
 ];
 
 export function Header() {
-  const health = useQuery(trpc.healthCheck.queryOptions());
+  // const health = useQuery(trpc.healthCheck.queryOptions());
 
 
   return (
