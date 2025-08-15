@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, count, isNull, gt } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
-import { db, project, environmentVariable, user, cliToken } from "@better-env/db";
+import { db, user, cliToken } from "@better-env/db";
 import { cliProcedure, publicProcedure, createTRPCRouter } from "../trpc";
 import { decryptSecretForProject } from "../lib/crypto";
+import { projectsRouter } from "./projects";
 
 // Device code storage interface
 interface DeviceCodeData {
@@ -182,33 +183,25 @@ export const cliRouter = createTRPCRouter({
   }),
 
   // List all projects accessible to the CLI user
+  // Reuses the existing projects.list router which has full organization support
   projects: cliProcedure.query(async ({ ctx }) => {
     try {
-      const userId = ctx.user.id;
-
-      // Get personal projects (no organization)
-      const personal = await db
-        .select({
-          id: project.id,
-          name: project.name,
-          logoUrl: project.logoUrl,
-          ownerId: project.ownerId,
-          organizationId: project.organizationId,
-          createdAt: project.createdAt,
-          updatedAt: project.updatedAt,
-          envCount: count(environmentVariable.id).as("envCount"),
-        })
-        .from(project)
-        .leftJoin(environmentVariable, eq(environmentVariable.projectId, project.id))
-        .where(and(eq(project.ownerId, userId), isNull(project.organizationId)))
-        .groupBy(project.id)
-        .orderBy(desc(project.createdAt));
-
-      return {
-        personal,
-        org: [], // TODO: Add organization projects when membership system is ready
-        orgs: [], // TODO: Add organization list when membership system is ready
+      // Create a mock session context for the projects router
+      const mockSession = {
+        user: ctx.user,
+        activeOrganizationId: undefined, // CLI doesn't have an active org concept
       };
+      
+      // Call the existing projects router list procedure
+      const projectsCaller = projectsRouter.createCaller({
+        session: mockSession,
+        cliAuth: ctx.cliAuth,
+        clientIP: ctx.clientIP,
+        req: ctx.req,
+        db: ctx.db,
+      } as any);
+      
+      return await projectsCaller.list();
     } catch (error) {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
@@ -218,58 +211,27 @@ export const cliRouter = createTRPCRouter({
   }),
 
   // Get specific project details with environment variables
+  // Reuses the existing projects.get router which has full organization support
   project: cliProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       try {
-        const userId = ctx.user.id;
-
-        // Get project details
-        const [projectRecord] = await db
-          .select()
-          .from(project)
-          .where(eq(project.id, input.id))
-          .limit(1);
-
-        if (!projectRecord) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Project not found",
-          });
-        }
-
-        // Check if user owns the project (for now, only personal projects)
-        if (projectRecord.ownerId !== userId) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "Access denied to this project",
-          });
-        }
-
-        // Get environment variables
-        const envsRaw = await db
-          .select({
-            id: environmentVariable.id,
-            key: environmentVariable.key,
-            value: environmentVariable.value,
-            description: environmentVariable.description,
-            environmentName: environmentVariable.environmentName,
-            createdAt: environmentVariable.createdAt,
-            updatedAt: environmentVariable.updatedAt,
-          })
-          .from(environmentVariable)
-          .where(eq(environmentVariable.projectId, projectRecord.id));
-
-        // Decrypt environment variable values
-        const envs = envsRaw.map((env) => ({
-          ...env,
-          value: decryptSecretForProject(projectRecord.id, env.value),
-        }));
-
-        return {
-          ...projectRecord,
-          envs,
+        // Create a mock session context for the projects router
+        const mockSession = {
+          user: ctx.user,
+          activeOrganizationId: undefined, // CLI doesn't have an active org concept
         };
+        
+        // Call the existing projects router get procedure
+        const projectsCaller = projectsRouter.createCaller({
+          session: mockSession,
+          cliAuth: ctx.cliAuth,
+          clientIP: ctx.clientIP,
+          req: ctx.req,
+          db: ctx.db,
+        } as any);
+        
+        return await projectsCaller.get({ id: input.id });
       } catch (error) {
         if (error instanceof TRPCError) throw error;
         
