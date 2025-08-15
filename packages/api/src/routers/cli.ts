@@ -7,21 +7,25 @@ import { db, project, environmentVariable, user, cliToken } from "@better-env/db
 import { cliProcedure, publicProcedure, createTRPCRouter } from "../trpc";
 import { decryptSecretForProject } from "../lib/crypto";
 
-// In-memory store for device codes (in production, use Redis or DB)
-export const deviceCodes = new Map<string, {
+// Device code storage interface
+interface DeviceCodeData {
   userCode: string;
   deviceCode: string;
   expiresAt: Date;
   userId?: string;
   used?: boolean;
-}>();
+}
+
+// In-memory store for device codes (in production, use Redis or DB)
+// This implements the OAuth 2.0 Device Authorization Grant flow
+export const deviceCodes = new Map<string, DeviceCodeData>();
 
 // Share deviceCodes globally for API route access
 // This allows the Next.js API route at /api/cli/authorize-device to access
 // the same device codes map without requiring external storage
 if (typeof global !== 'undefined') {
   // @ts-ignore - Global augmentation for device codes sharing
-  global._deviceCodes = deviceCodes;
+  (global as any)._deviceCodes = deviceCodes;
 }
 
 export const cliRouter = createTRPCRouter({

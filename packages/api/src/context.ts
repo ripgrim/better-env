@@ -78,12 +78,13 @@ export async function createContext(req: NextRequest) {
   const cliAuth = cliTokenString ? await validateCliToken(cliTokenString) : null;
 
   // Check if this is a CLI-only endpoint to avoid consuming request body
+  // This prevents betterAuth from consuming the request body stream before TRPC can read it
   let session = null;
   const isCLIOnlyEndpoint = req.url.includes('/api/trpc/cli.') &&
                             !req.url.includes('/api/trpc/cli.authorizeDevice');
   
   // Only get session for endpoints that need web authentication
-  // Skip CLI-only endpoints to prevent request body consumption issues
+  // Skip CLI-only endpoints to prevent request body consumption conflicts with TRPC
   if (!isCLIOnlyEndpoint) {
     try {
       session = await auth.api.getSession({

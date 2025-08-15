@@ -1,22 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { TRPCError } from "@trpc/server";
 import { auth } from "@better-env/auth/server";
 
-// Use the shared device codes from global storage
-// @ts-ignore
-const deviceCodes = global._deviceCodes || new Map<string, {
+// Device code storage interface
+interface DeviceCodeData {
   userCode: string;
   deviceCode: string;
   expiresAt: Date;
   userId?: string;
   used?: boolean;
-}>();
+}
 
-// Ensure global storage is set
+// Use the shared device codes from global storage
+// This allows the CLI router (TRPC) and this API route to share the same device codes
+// @ts-ignore - Global augmentation for device codes sharing
+const deviceCodes: Map<string, DeviceCodeData> = (global as any)._deviceCodes || new Map<string, DeviceCodeData>();
+
+// Ensure global storage is set for cross-module access
 if (typeof global !== 'undefined') {
-  // @ts-ignore
-  global._deviceCodes = deviceCodes;
+  // @ts-ignore - Global augmentation for device codes sharing
+  (global as any)._deviceCodes = deviceCodes;
 }
 
 const inputSchema = z.object({
@@ -75,7 +78,7 @@ export async function POST(req: NextRequest) {
     const userId = sessionUser.id;
     
     // Find device code by user code
-    let deviceAuth: any = null;
+    let deviceAuth: DeviceCodeData | null = null;
     let deviceCodeKey: string | null = null;
     
     for (const [key, value] of deviceCodes.entries()) {
