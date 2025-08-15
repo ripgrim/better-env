@@ -130,7 +130,7 @@ export function createAuthScreens(
 
     const browserText = createText(
       "browser-opened",
-      "✅ Browser opened for authorization",
+      "Browser opened for authorization",
       { left: centerX(renderer, 40), top: 10 },
       { fg: colors.primary }
     )
@@ -220,8 +220,8 @@ export function createAuthScreens(
 
         const successText = createText(
           "success-text",
-          "Welcome to Better Env CLI!",
-          { left: centerX(renderer, 30), top: 13 },
+          "welcome, nerd.",
+          { left: centerX(renderer, 50), top: 13 },
           { fg: colors.primary }
         )
         addElement(successText)

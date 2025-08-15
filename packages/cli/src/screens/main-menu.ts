@@ -29,6 +29,7 @@ export function createMainMenuScreen(
   function showSplashScreen() {
     clearScreen()
     setCurrentScreen("splash")
+    
 
     if (!parentContainer) return
 

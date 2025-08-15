@@ -31,7 +31,14 @@ import {
   runPull,
   runPush,
 } from "./utils/common";
-import { colors, createBox, createText, createSelect, centerX, createLogo } from "./ui/ui";
+import {
+  colors,
+  createBox,
+  createText,
+  createSelect,
+  centerX,
+  createLogo,
+} from "./ui/ui";
 
 // Screens
 import { createAuthScreens } from "./screens/auth";
@@ -94,88 +101,107 @@ async function handleMenuSelection(value: string) {
 }
 
 function showWelcomeScreen() {
-  debugLog("👋 Showing welcome screen...")
-  clearScreen()
-  setCurrentScreen("welcome")
+  debugLog("👋 Showing welcome screen...");
+  clearScreen();
+  setCurrentScreen("welcome");
 
-  if (!parentContainer || !renderer) return
+  if (!parentContainer || !renderer) return;
 
-  // Logo
-  const logo = createLogo(renderer, { left: centerX(renderer, 60), top: 2 })
-  addElement(logo)
-
-  const titleBox = createBox(
-    "welcome-title",
-    "Welcome to Better Env CLI",
-    { left: centerX(renderer, 60), top: 8 },
-    { width: 60, height: 3 }
-  )
-  addElement(titleBox)
+  // Logo - centered properly with ASCII art width
+  const logoWidth = 76; // Width of the ASCII art
+  const logo = createLogo(renderer, {
+    left: centerX(renderer, logoWidth),
+    top: 5,
+  });
+  addElement(logo);
 
   const descText = createText(
     "welcome-desc",
     "Securely manage your environment variables across projects",
-    { left: centerX(renderer, 55), top: 12 },
-    { fg: colors.secondary }
-  )
-  addElement(descText)
+    { left: centerX(renderer, 60), top: 13 },
+    { fg: colors.secondary, bg: colors.selectBg }
+  );
+  addElement(descText);
 
   const welcomeOptions: SelectOption[] = [
-    { name: "🔐 Login", description: "Authenticate with your Better Env account", value: "login" },
-    { name: "ℹ️  Learn More", description: "Visit better-env.com to learn about the platform", value: "learn" },
-    { name: "❌ Exit", description: "Quit the CLI", value: "exit" }
-  ]
+    {
+      name: "Login",
+      description: "Authenticate with your better-env account",
+      value: "login",
+    },
+    {
+      name: "Learn More",
+      description: "Visit better-env.com to learn about the platform",
+      value: "learn",
+    },
+    { name: "Exit", description: "Quit the CLI", value: "exit" },
+  ];
 
   const welcomeSelect = createSelect(
     "welcome-select",
     welcomeOptions,
-    { left: centerX(renderer, 76), top: 15 },
-    { width: 76, height: 3 }
-  )
+    {
+      left: centerX(renderer, 80),
+      top: 16,
+    },
+    {
+      width: 80,
+      height: 6
+    }
+  );
+  
+  welcomeSelect.on(
+    SelectRenderableEvents.ITEM_SELECTED,
+    (index: number, option: SelectOption) => {
+      handleDebouncedSelection(async () => {
+        switch (option.value) {
+          case "login":
+            debugLog("👤 User selected login");
+            authScreens.showLoginScreen();
+            break;
+          case "learn":
+            debugLog("📚 User selected learn more");
+            const command =
+              process.platform === "darwin"
+                ? "open"
+                : process.platform === "win32"
+                  ? "start"
+                  : "xdg-open";
+            try {
+              require("child_process").exec(
+                `${command} "https://better-env.com"`
+              );
+              debugLog("🌐 Opened better-env.com");
+            } catch (error) {
+              debugLog(`❌ Failed to open browser: ${error}`);
+            }
+            // Stay on welcome screen after opening browser
+            break;
+          case "exit":
+            debugLog("🚪 User selected exit");
+            process.exit(0);
+            break;
+        }
+      });
+    }
+  );
 
-  welcomeSelect.on(SelectRenderableEvents.ITEM_SELECTED, (index: number, option: SelectOption) => {
-    handleDebouncedSelection(async () => {
-      switch (option.value) {
-        case "login":
-          debugLog("👤 User selected login")
-          authScreens.showLoginScreen()
-          break
-        case "learn":
-          debugLog("📚 User selected learn more")
-          const command = process.platform === "darwin" ? "open" :
-                         process.platform === "win32" ? "start" : "xdg-open"
-          try {
-            require("child_process").exec(`${command} "https://better-env.com"`)
-            debugLog("🌐 Opened better-env.com")
-          } catch (error) {
-            debugLog(`❌ Failed to open browser: ${error}`)
-          }
-          // Stay on welcome screen after opening browser
-          break
-        case "exit":
-          debugLog("🚪 User selected exit")
-          process.exit(0)
-          break
-      }
-    })
-  })
-
-  addElement(welcomeSelect)
+  addElement(welcomeSelect);
 
   const hintText = createText(
     "welcome-hint",
     "↑↓: Navigate | Enter: Select | Ctrl+C: Exit",
-    { left: centerX(renderer, 40), top: 20 },
+    { left: centerX(renderer, 40), top: 26 },
     { fg: colors.muted }
-  )
-  addElement(hintText)
+  );
+  addElement(hintText);
 
   // Auto-focus
   setTimeout(() => {
     if (welcomeSelect) {
-      welcomeSelect.focus()
+      welcomeSelect.focus();
     }
-  }, 100)
+  }, 100);
 }
 
 async function checkAuthAndContinue() {
@@ -186,8 +212,6 @@ async function checkAuthAndContinue() {
     authScreens.showAuthError();
   }
 }
-
-
 
 function handleKeyPress(key: ParsedKey) {
   debugLog(
