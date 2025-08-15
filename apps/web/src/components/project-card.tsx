@@ -1,4 +1,5 @@
 
+import { useState } from 'react'
 import { ProjectLogo } from './project-logo'
 import { DeviceBubbles } from './device-bubbles'
 import { RefreshCWIcon } from './ui/refresh-cw'
@@ -15,6 +16,7 @@ interface ProjectCardProps {
   devices: Device[]
   lastSyncTime: string
   environmentCount: number
+  onRefresh?: () => Promise<void> | void
 }
 
 export function ProjectCard({
@@ -23,7 +25,9 @@ export function ProjectCard({
   devices,
   lastSyncTime,
   environmentCount,
+  onRefresh,
 }: ProjectCardProps) {
+  const [refreshing] = useState(false)
   function timeAgo(isoLike: string): string {
     const then = new Date(isoLike).getTime();
     const now = Date.now();
@@ -54,18 +58,19 @@ export function ProjectCard({
           <h3 className="text-text-primary text-lg font-medium tracking-tight">{name}</h3>
         </div>
         <Tooltip>
-                <TooltipTrigger>
-                  <RefreshCWIcon size={18} className="w-4 h-4 text-text-tertiary" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Refresh &apos;{name}&apos;</p>
-                </TooltipContent>
-              </Tooltip>        </div>
-      
+          <TooltipTrigger>
+            <RefreshCWIcon size={18} className="w-4 h-4 text-text-tertiary" />
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Refresh &apos;{name}&apos;</p>
+          </TooltipContent>
+        </Tooltip>
+        </div>
+
       <div className="flex items-center justify-between mb-4">
         <DeviceBubbles devices={devices} />
       </div>
-      
+
       <div className="flex items-center justify-between text-text-tertiary text-xs">
         <span className="font-normal">{timeAgo(lastSyncTime)}</span>
         <span className="font-normal">{environmentCount} variables</span>

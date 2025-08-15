@@ -18,15 +18,15 @@
     "dist"
   ],
   "scripts": {
-    "dev": "tsup --watch",
+    "dev": "bun run --watch src/index.ts",
     "build": "tsup",
-    "start": "node dist/index.js",
+    "start": "bun run dist/index.js",
     "typecheck": "tsc --noEmit",
-    "test": "vitest",
+    "test": "bun test",
     "lint": "eslint --ext .ts",
     "format:write": "prettier --write .",
     "format:check": "prettier --check .",
-    "prepublishOnly": "npm run build",
+    "prepublishOnly": "bun run build",
     "release": "changeset version",
     "pub:release": "bun run build && bun publish --no-git-checks --access public",
     "pub:beta": "bun run build && bun publish --no-git-checks --access public --tag beta"
@@ -40,6 +40,7 @@
     "vitest": "^1.2.1"
   },
   "dependencies": {
+    "@opentui/core": "^0.1.1",
     "chalk": "^5.3.0",
     "commander": "^11.1.0",
     "fs-extra": "^11.2.0",

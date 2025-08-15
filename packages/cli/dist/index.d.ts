@@ -1,2 +1,3 @@
+declare function run(): Promise<void>;
 
-export {  }
+export { run };

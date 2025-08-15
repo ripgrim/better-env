@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
 
 import { authClient } from "@better-env/auth/client";
 import { Skeleton } from "./ui/skeleton";
@@ -34,13 +35,19 @@ export default function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Image
-          src={session.data?.user?.image || "/placeholder.svg?height=32&width=32"}
-          width={32}
-          height={32}
-          alt="User Avatar"
-          className="rounded-full"
-        />
+        <Button
+          variant="text"
+          size="icon"
+          className="rounded-full p-0 h-auto w-auto"
+        >
+          <Image
+            src={session.data?.user?.image || "/placeholder.svg?height=32&width=32"}
+            width={32}
+            height={32}
+            alt="User Avatar"
+            className="rounded-full"
+          />
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="start">
         <DropdownMenuLabel>My Account</DropdownMenuLabel>
@@ -63,7 +70,7 @@ export default function UserMenu() {
               >
                 {!activeOrg.data?.id && <Check className="mr-2 h-4 w-4" />} Personal workspace
               </DropdownMenuItem>
-              {Array.isArray(orgs.data) && orgs.data.map((o) => (
+              {Array.isArray(orgs.data) && orgs.data.map((o, idx) => (
                 <DropdownMenuItem
                   key={o.id}
                   onClick={async () => {

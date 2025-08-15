@@ -1,7 +1,7 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  banner: { js: "#!/usr/bin/env node" },
+  banner: { js: "#!/usr/bin/env bun" },
   format: "esm",
   target: "esnext",
   dts: true,

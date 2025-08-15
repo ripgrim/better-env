@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useQuery } from "@tanstack/react-query";
+import { KeybindsProvider } from "@/components/keybinds-provider";
 
 
 export function Providers({
@@ -51,7 +52,9 @@ export function Providers({
                 Link={Link}
               >
                 <EnsureOrganization />
-                {children}
+                <KeybindsProvider>
+                  {children}
+                </KeybindsProvider>
               </AuthUIProvider>
               <Databuddy
                 clientId="bounty"
@@ -73,7 +76,9 @@ export function Providers({
         ) : (
           <ConfettiProvider>
             <EnsureOrganization />
-            {children}
+            <KeybindsProvider>
+              {children}
+            </KeybindsProvider>
             <Databuddy
               clientId="bounty"
               trackHashChanges={true}

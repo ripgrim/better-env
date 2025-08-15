@@ -2,7 +2,7 @@ import chalk from "chalk";
 import { Command } from "commander";
 import ora from "ora";
 
-import { logger } from "../utils/logger";
+import { logger } from "@/src/utils/logger";
 
 const spinner = ora({
   text: "Loading...",

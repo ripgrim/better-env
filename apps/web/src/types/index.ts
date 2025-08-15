@@ -1,4 +1,5 @@
 export * from "./svg";
+export * from "./keybinds";
 
 export type AppUser = {
   id: string;

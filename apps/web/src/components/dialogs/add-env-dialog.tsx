@@ -71,7 +71,7 @@ export function AddEnvDialog({ projectId, open, onOpenChange }: { projectId: str
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader>
+        <DialogHeader className="mb-2">
           <DialogTitle>Add variables</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
@@ -82,6 +82,7 @@ export function AddEnvDialog({ projectId, open, onOpenChange }: { projectId: str
                 id="env-key"
                 placeholder="DATABASE_URL"
                 value={keyEntry}
+                className="mt-2"
                 onChange={(e) => setKeyEntry(e.target.value)}
                 onPaste={(e) => {
                   const text = e.clipboardData.getData("text");
@@ -98,6 +99,7 @@ export function AddEnvDialog({ projectId, open, onOpenChange }: { projectId: str
                 id="env-value"
                 placeholder="postgresql://..."
                 value={valueEntry}
+                className="mt-2"
                 onChange={(e) => setValueEntry(e.target.value)}
                 onPaste={(e) => {
                   const text = e.clipboardData.getData("text");
@@ -147,7 +149,7 @@ export function AddEnvDialog({ projectId, open, onOpenChange }: { projectId: str
           )}
           <div>
             <Label htmlFor="env-name">Environment</Label>
-            <select id="env-name" className="w-full border rounded-md px-3 py-2 bg-transparent" value={envName} onChange={(e) => setEnvName(e.target.value)}>
+            <select id="env-name" className="w-full border rounded-md px-3 py-2 bg-transparent mb-4 mt-2" value={envName} onChange={(e) => setEnvName(e.target.value)}>
               <option value="production">Production</option>
               <option value="preview">Preview</option>
               <option value="development">Development</option>

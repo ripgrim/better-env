@@ -159,17 +159,27 @@ export const projectsRouter = router({
   }),
 
   get: protectedProcedure.input(z.object({ id: z.string() })).query(async ({ ctx, input }) => {
-    const activeOrgId = (ctx.session as { activeOrganizationId?: string } | null)?.activeOrganizationId;
     const [row] = await db
       .select()
       .from(project)
-      .where(
-        activeOrgId
-          ? and(eq(project.id, input.id), eq(project.organizationId, activeOrgId))
-          : and(eq(project.id, input.id), eq(project.ownerId, ctx.session.user.id), isNull(project.organizationId))
-      )
+      .where(eq(project.id, input.id))
       .limit(1);
     if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+
+    if (row.organizationId == null) {
+      if (row.ownerId !== ctx.session.user.id) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+      }
+    } else {
+      const [membership] = await db
+        .select({ id: member.id })
+        .from(member)
+        .where(and(eq(member.userId, ctx.session.user.id), eq(member.organizationId, row.organizationId)))
+        .limit(1);
+      if (!membership) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+      }
+    }
 
     const envsRaw = await db
       .select({ id: environmentVariable.id, key: environmentVariable.key, value: environmentVariable.value, description: environmentVariable.description, environmentName: environmentVariable.environmentName, createdAt: environmentVariable.createdAt, updatedAt: environmentVariable.updatedAt })

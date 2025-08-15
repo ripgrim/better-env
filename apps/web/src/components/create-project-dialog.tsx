@@ -208,8 +208,6 @@ export function CreateProjectDialog({ open, onOpenChange }: { open: boolean; onO
               </Button>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <div className="text-sm text-muted-foreground">Key</div>
-              <div className="text-sm text-muted-foreground">Value</div>
               {fields.map((field, index) => (
                 <>
                   <div className="flex items-center gap-2" key={`${field.id}-key`}>

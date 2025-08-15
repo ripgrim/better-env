@@ -35,7 +35,7 @@ export default function ProfilePage() {
           {editing ? "Done" : "Edit"}
         </Button>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+      <div className="grid grid-cols-1 md:grid-cols-1 gap-6 w-full">
         <div className="space-y-4">
           <h2 className="text-sm font-medium text-text-secondary">Account</h2>
           <UserCard editing={editing} />

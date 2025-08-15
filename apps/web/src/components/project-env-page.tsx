@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation'
 import { trpc } from '@/utils/trpc'
 import { useQuery } from '@tanstack/react-query'
 import { AddEnvDialog } from "@/components/dialogs/add-env-dialog"
+import { Spinner } from "@/components/ui/spinner"
 import { classifyEnvVar, type EnvCategory } from '@/lib/env-classifier'
 import type { Project, EnvVar as CoreEnvVar } from '@/types'
 
@@ -69,7 +70,7 @@ export function ProjectEnvPage({ projectId }: ProjectEnvPageProps) {
         return 'Misc'
     }
   }
-  const filteredVars = envVars.filter(envVar => 
+  const filteredVars = envVars.filter(envVar =>
     envVar.key.toLowerCase().includes(searchQuery.toLowerCase()) ||
     envVar.description?.toLowerCase().includes(searchQuery.toLowerCase())
   )
@@ -96,6 +97,22 @@ export function ProjectEnvPage({ projectId }: ProjectEnvPageProps) {
   const maskValue = (value: string) => {
     if (value.length <= 8) return '•'.repeat(value.length)
     return value.substring(0, 4) + '•'.repeat(Math.min(value.length - 8, 12)) + value.substring(value.length - 4)
+  }
+
+  if (projectQuery.isPending) {
+    return (
+      <div className="flex h-svh items-center justify-center">
+        <Spinner size={32} />
+      </div>
+    )
+  }
+
+  if (projectQuery.error) {
+    return (
+      <div className="flex h-svh items-center justify-center text-red-500 text-sm">
+        Failed to load project
+      </div>
+    )
   }
 
   return (
@@ -128,15 +145,20 @@ export function ProjectEnvPage({ projectId }: ProjectEnvPageProps) {
             </div>
             <Button
               variant="text"
+              data-keybind-action="hideEnvVars"
               onClick={() => setShowAll(!showAll)}
               className="flex items-center gap-2 text-text-secondary hover:text-text-primary text-sm px-3 py-2"
             >
               {showAll ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               {showAll ? 'Hide' : 'Show'} All
             </Button>
-            <Button onClick={() => setOpenAdd(true)} className="bg-accent-blue text-primary-foreground rounded-lg px-4 py-2 text-sm hover:bg-accent-blue-hover transition-colors duration-200 font-medium shadow-sm">
+            <Button data-keybind-action="addEnvs" onClick={() => setOpenAdd(true)} className="bg-accent-blue text-primary-foreground rounded-lg px-4 py-2 text-sm hover:bg-accent-blue-hover transition-colors duration-200 font-medium shadow-sm">
               <Plus className="w-4 h-4 mr-2" />
               Add Variable
+              <div className="flex h-5 items-center justify-center gap-2.5 rounded bg-[#0061ca] px-1 outline-1 -outline-offset-1 outline-[#1a6fcc]"><div className="text-tokens-shortcut-primary-symbol justify-start text-center text-sm font-semibold leading-none">
+                ⇧A
+              </div>
+              </div>
             </Button>
           </div>
         </div>
@@ -211,8 +233,8 @@ export function ProjectEnvPage({ projectId }: ProjectEnvPageProps) {
                       const cmd = runner === 'npx'
                         ? `npx @better-env/cli@latest pull ${project?.id ?? ''}`
                         : runner === 'pnpm'
-                        ? `pnpm dlx @better-env/cli@latest pull ${project?.id ?? ''}`
-                        : `bunx @better-env/cli@latest pull ${project?.id ?? ''}`
+                          ? `pnpm dlx @better-env/cli@latest pull ${project?.id ?? ''}`
+                          : `bunx @better-env/cli@latest pull ${project?.id ?? ''}`
                       handleCopy(cmd, 'pull-command')
                     }}
                     className="p-1.5 h-auto hover:bg-accent"
@@ -242,7 +264,7 @@ export function ProjectEnvPage({ projectId }: ProjectEnvPageProps) {
                       </span>
                     </div>
                   </button>
-                  
+
                   {isExpanded && (
                     <div className="border-t border-border-subtle">
                       {vars.map((envVar, index) => (
@@ -304,18 +326,17 @@ function EnvVarRow({ envVar, forceShow, isLast, onCopy, copiedItem, maskValue }:
             </Button>
           </div>
           <p className="text-text-secondary text-xs mb-2">{envVar.description}</p>
-          <div 
-            className={`font-mono text-xs p-2 rounded border transition-all duration-300 cursor-pointer ${
-              shouldShow 
-                ? 'bg-secondary border-border-light text-text-primary' 
-                : 'bg-accent border-border-subtle text-text-secondary hover:bg-secondary'
-            }`}
+          <div
+            className={`font-mono text-xs p-2 rounded border transition-all duration-300 cursor-pointer ${shouldShow
+              ? 'bg-secondary border-border-light text-text-primary'
+              : 'bg-accent border-border-subtle text-text-secondary hover:bg-secondary'
+              }`}
             onClick={() => !forceShow && setIsVisible(!isVisible)}
           >
             {shouldShow ? envVar.value : maskValue(envVar.value)}
           </div>
         </div>
-        
+
         {shouldShow && (
           <Button
             variant="text"

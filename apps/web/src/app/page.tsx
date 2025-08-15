@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Plus } from 'lucide-react'
 import { authClient } from "@better-env/auth/client"
 import { useState } from "react"
+import { useKeybindActions } from "@/components/keybinds-provider"
 import { CreateProjectDialog } from "@/components/create-project-dialog"
 import RedirectToSignIn from "@/components/auth/redirect-to-signin"
 import { Spinner } from "@/components/ui/spinner"
@@ -14,7 +15,7 @@ import { RefreshCWIcon } from '@/components/ui/refresh-cw'
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
 export default function DashboardPage() {
-  const [open, setOpen] = useState(false)
+  const actions = useKeybindActions()
 
   const session = authClient.useSession();
 
@@ -23,7 +24,7 @@ export default function DashboardPage() {
   }
 
   if (session.error) {
-    return  <div>Error: {JSON.stringify(session.error, null, 2)}</div>
+    return <div>Error: {JSON.stringify(session.error, null, 2)}</div>
   }
 
   if (!session.data?.user) {
@@ -49,16 +50,20 @@ export default function DashboardPage() {
             </h2>
             <div className="flex items-center gap-4">
               <Link href="/profile" className="text-sm text-text-secondary hover:text-text-primary underline">Profile</Link>
-              <Button onClick={() => setOpen(true)} className="bg-accent-blue text-primary-foreground rounded-lg px-6 py-2.5 text-base hover:bg-accent-blue-hover transition-colors duration-200 font-medium shadow-sm">
+              <Button data-keybind-action="openNewProject" onClick={() => actions.openNewProject()} className="bg-accent-blue text-primary-foreground rounded-lg px-6 py-2.5 text-base hover:bg-accent-blue-hover transition-colors duration-200 font-medium shadow-sm">
                 <Plus className="w-4 h-4" />
                 New Project
+                  <div className="flex h-5 items-center justify-center gap-2.5 rounded bg-[#0061ca] px-1 outline-1 -outline-offset-1 outline-[#1a6fcc]"><div className="text-tokens-shortcut-primary-symbol justify-start text-center text-sm font-semibold leading-none">
+                  ⇧N
+                  </div>
+                </div>
               </Button>
             </div>
           </div>
           <ProjectsList />
         </div>
       </main>
-      <CreateProjectDialog open={open} onOpenChange={setOpen} />
+
     </div>
   )
 }
