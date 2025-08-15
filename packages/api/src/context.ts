@@ -50,6 +50,12 @@ async function validateCliToken(token: string) {
       return null;
     }
 
+    // Check if token is expired
+    if (tokenRecord.expiresAt && new Date() > tokenRecord.expiresAt) {
+      console.log(`🚨 Expired CLI token used: ${token.substring(0, 8)}...`);
+      return null;
+    }
+
     // Update last used timestamp
     await db
       .update(cliToken)

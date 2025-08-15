@@ -29,6 +29,21 @@ if (typeof global !== 'undefined') {
   (global as any)._deviceCodes = deviceCodes;
 }
 
+// Clean up expired device codes every 5 minutes
+setInterval(() => {
+  const now = new Date();
+  let cleaned = 0;
+  for (const [key, data] of deviceCodes.entries()) {
+    if (now > data.expiresAt) {
+      deviceCodes.delete(key);
+      cleaned++;
+    }
+  }
+  if (cleaned > 0) {
+    console.log(`🧹 Cleaned up ${cleaned} expired device codes`);
+  }
+}, 5 * 60 * 1000); // 5 minutes
+
 export const cliRouter = createTRPCRouter({
   // Device authorization flow - Step 1: CLI requests device code
   deviceAuth: publicProcedure.mutation(async () => {

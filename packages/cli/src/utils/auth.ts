@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, chmodSync, unlinkSync } from "fs";
 import { join } from "path";
 import { homedir } from "os";
 import { apiClient } from "../lib/trpc-client";
@@ -13,9 +13,10 @@ const debugLog = (message: string) => {
  */
 export function loadToken(): string | null {
   try {
-    const tokenPath = join(homedir(), ".better-env", "token");
+    const tokenPath = join(process.cwd(), "better-env.json");
     if (existsSync(tokenPath)) {
-      return readFileSync(tokenPath, "utf8").trim();
+      const config = JSON.parse(readFileSync(tokenPath, "utf8"));
+      return config.cliToken || null;
     }
   } catch (error) {
     debugLog(`❌ Error loading token: ${error}`);
@@ -29,14 +30,19 @@ export function loadToken(): string | null {
 export function saveToken(token: string): void {
   debugLog(`💾 Saving token: length=${token.length}, prefix=${token.substring(0, 8)}...`);
   try {
-    const configDir = join(homedir(), ".better-env");
-    if (!existsSync(configDir)) {
-      debugLog("📁 Creating config directory...");
-      mkdirSync(configDir, { recursive: true });
+    const tokenPath = join(process.cwd(), "better-env.json");
+    let config: any = {};
+    
+    if (existsSync(tokenPath)) {
+      config = JSON.parse(readFileSync(tokenPath, "utf8"));
     }
-    const tokenPath = join(configDir, "token");
-    writeFileSync(tokenPath, token);
-    debugLog(`✅ Token saved to ${tokenPath}`);
+    
+    config.cliToken = token;
+    writeFileSync(tokenPath, JSON.stringify(config, null, 2));
+    
+    // Set file permissions to 600 (owner read/write only)
+    chmodSync(tokenPath, 0o600);
+    debugLog(`✅ Token saved to ${tokenPath} with secure permissions`);
   } catch (error) {
     debugLog(`❌ Error saving token: ${error}`);
   }
@@ -46,11 +52,18 @@ export function saveToken(token: string): void {
  * Clear CLI token from disk
  */
 export function clearToken(): void {
+  debugLog("🗑️ Clearing CLI token...");
   try {
-    const tokenPath = join(homedir(), ".better-env", "token");
+    const tokenPath = join(process.cwd(), "better-env.json");
     if (existsSync(tokenPath)) {
-      require("fs").unlinkSync(tokenPath);
-      debugLog("🗑️ Token cleared");
+      const config = JSON.parse(readFileSync(tokenPath, "utf8"));
+      delete config.cliToken;
+      if (Object.keys(config).length === 0) {
+        unlinkSync(tokenPath);
+      } else {
+        writeFileSync(tokenPath, JSON.stringify(config, null, 2));
+      }
+      debugLog("✅ Token cleared");
     }
   } catch (error) {
     debugLog(`❌ Error clearing token: ${error}`);
