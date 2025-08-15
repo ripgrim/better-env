@@ -3,6 +3,7 @@ import { createTRPCClient, httpLink } from "@trpc/client";
 import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import type { AppRouter } from "@better-env/api";
 import { toast } from "sonner";
+import superjson from "superjson";
 
 export const queryClient = new QueryClient({
   queryCache: new QueryCache({
@@ -23,6 +24,7 @@ export const trpcClient = createTRPCClient<AppRouter>({
   links: [
     httpLink({
       url: `${process.env.NEXT_PUBLIC_API_URL || ""}/api/trpc`,
+      transformer: superjson,
       fetch(input: RequestInfo | URL, init?: RequestInit) {
         return fetch(input, {
           ...init,
