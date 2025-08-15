@@ -64,7 +64,7 @@ export default function DeviceAuthorizePage() {
       setError("");
       setIsLoading(false);
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       setError(error.message);
       setIsLoading(false);
     },

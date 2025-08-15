@@ -44,7 +44,9 @@ export default function CliPage() {
         setTokens(result.data)
       }
     } catch (error) {
-      toast.error("Failed to fetch CLI tokens")
+      toast.error("Failed to fetch CLI tokens", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      })
     } finally {
       setLoading(false)
     }
@@ -74,7 +76,9 @@ export default function CliPage() {
         toast.error(result.error || "Failed to create token")
       }
     } catch (error) {
-      toast.error("Failed to create CLI token")
+      toast.error("Failed to create CLI token", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      })
     } finally {
       setCreating(false)
     }
@@ -94,7 +98,9 @@ export default function CliPage() {
         toast.error(result.error || "Failed to delete token")
       }
     } catch (error) {
-      toast.error("Failed to delete token")
+      toast.error("Failed to delete token", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      })
     }
   }
 
@@ -105,7 +111,9 @@ export default function CliPage() {
       setTimeout(() => setCopiedToken(null), 2000)
       toast.success("Token copied to clipboard")
     } catch (error) {
-      toast.error("Failed to copy token")
+      toast.error("Failed to copy token", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      })
     }
   }
 
@@ -145,7 +153,7 @@ export default function CliPage() {
                 <li>Press SPACE when prompted to start device authorization</li>
                 <li>Your browser will open to this page automatically</li>
                 <li>Enter the code displayed in your terminal</li>
-                <li>You're ready to go!</li>
+                <li>You&apos;re ready to go!</li>
               </ol>
             </div>
             <div className="text-sm">
@@ -163,7 +171,7 @@ export default function CliPage() {
           <CardHeader>
             <CardTitle className="text-green-800 dark:text-green-200">Token Created Successfully!</CardTitle>
             <CardDescription className="text-green-700 dark:text-green-300">
-              Copy this token now - it won't be shown again.
+              Copy this token now - it won&apos;t be shown again.
             </CardDescription>
           </CardHeader>
           <CardContent>

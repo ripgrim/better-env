@@ -70,7 +70,7 @@ export default function UserMenu() {
               >
                 {!activeOrg.data?.id && <Check className="mr-2 h-4 w-4" />} Personal workspace
               </DropdownMenuItem>
-              {Array.isArray(orgs.data) && orgs.data.map((o, idx) => (
+              {Array.isArray(orgs.data) && orgs.data.map((o) => (
                 <DropdownMenuItem
                   key={o.id}
                   onClick={async () => {

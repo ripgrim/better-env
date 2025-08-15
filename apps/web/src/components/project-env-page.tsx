@@ -31,7 +31,7 @@ export function ProjectEnvPage({ projectId }: ProjectEnvPageProps) {
   const [runner, setRunner] = useState<'npx' | 'pnpm' | 'bunx'>('npx')
 
   const projectQuery = useQuery(trpc.projects.get.queryOptions({ id: projectId }))
-  const project = projectQuery.data?.data as Project | undefined
+  const project = projectQuery.data as Project | undefined
 
   const handleCopy = async (text: string, item: string) => {
     try {

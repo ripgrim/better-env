@@ -49,7 +49,13 @@ export function ProjectCard({
     label = labels[i] as string;
     const plural = val === 1 ? "" : "s";
     return `${val} ${label}${plural} ago`;
+    
   }
+  
+  if (refreshing) {
+    console.log(onRefresh, "onRefresh")
+  }
+
   return (
     <div className="bg-card border border-border-light rounded-lg p-6 shadow-card hover:shadow-lg hover:border-border-light transition-all duration-300 cursor-pointer group">
       <div className="flex items-start justify-between mb-4">

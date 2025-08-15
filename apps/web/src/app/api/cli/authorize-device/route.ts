@@ -13,13 +13,15 @@ interface DeviceCodeData {
 
 // Use the shared device codes from global storage
 // This allows the CLI router (TRPC) and this API route to share the same device codes
-// @ts-ignore - Global augmentation for device codes sharing
-const deviceCodes: Map<string, DeviceCodeData> = (global as any)._deviceCodes || new Map<string, DeviceCodeData>();
+declare global {
+  var _deviceCodes: Map<string, DeviceCodeData> | undefined;
+}
+
+const deviceCodes: Map<string, DeviceCodeData> = global._deviceCodes || new Map<string, DeviceCodeData>();
 
 // Ensure global storage is set for cross-module access
 if (typeof global !== 'undefined') {
-  // @ts-ignore - Global augmentation for device codes sharing
-  (global as any)._deviceCodes = deviceCodes;
+  global._deviceCodes = deviceCodes;
 }
 
 const inputSchema = z.object({
@@ -28,7 +30,6 @@ const inputSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    // Parse request body
     const body = await req.json();
     const input = inputSchema.parse(body);
 
@@ -68,9 +69,9 @@ export async function POST(req: NextRequest) {
       }
       
       sessionUser = session.user;
-    } catch (error) {
+    } catch (sessionError) {
       return NextResponse.json(
-        { error: { message: "Session validation failed" } },
+        { error: { message: "Session validation failed", details: sessionError instanceof Error ? sessionError.message : "Unknown error" } },
         { status: 401 }
       );
     }

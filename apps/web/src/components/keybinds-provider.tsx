@@ -97,7 +97,3 @@ function matchesKey(event: KeyboardEvent, key: string) {
   if (/^[a-z]$/.test(lower)) return eventCode === `key${lower}` || eventKey === lower;
   return eventKey === lower;
 }
-
-function attemptSwitchWorkspace(index: number) {}
-
-
