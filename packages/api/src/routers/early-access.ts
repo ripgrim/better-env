@@ -6,9 +6,9 @@ import { grim } from "../lib/use-dev-log";
 const { error, info, warn } = grim();
 
 import { db, waitlist } from "@better-env/db";
-import { publicProcedure, router, adminProcedure } from "../trpc";
+import { publicProcedure, createTRPCRouter, adminProcedure } from "../trpc";
 
-export const earlyAccessRouter = router({
+export const earlyAccessRouter = createTRPCRouter({
   getWaitlistCount: publicProcedure.query(async () => {
     try {
       info("[getWaitlistCount] called");
@@ -23,9 +23,7 @@ export const earlyAccessRouter = router({
         });
       }
 
-      return {
-        count: waitlistCount[0].count,
-      };
+      return waitlistCount[0].count;
     } catch (err) {
       error("[getWaitlistCount] Error:", err);
 
@@ -183,7 +181,7 @@ export const earlyAccessRouter = router({
           .where(eq(waitlist.id, id));
 
         info("[updateWaitlistAccess] Updated access for ID:", id, "hasAccess:", hasAccess);
-        return { success: true };
+        return { updated: true };
       } catch (err) {
         error("[updateWaitlistAccess] Error:", err);
         throw new TRPCError({

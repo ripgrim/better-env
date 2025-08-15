@@ -6,96 +6,111 @@ import { trpc, queryClient } from "@/utils/trpc";
 import { ProjectCard } from "@/components/project-card";
 import { Spinner } from "@/components/ui/spinner";
 import { authClient } from "@better-env/auth/client";
-import type { ProjectsListData, Project } from "@/types";
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
+
+// Use the actual API return types instead of forcing conversions
+type ApiProject = {
+  id: string;
+  name: string;
+  logoUrl: string | null;
+  ownerId: string;
+  organizationId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  envCount: number;
+};
+
+type ApiOrganizationData = {
+  organizationId: string;
+  organizationName: string | null;
+  projects: ApiProject[];
+};
 
 export function ProjectsList() {
   const activeOrg = authClient.useActiveOrganization();
-  const q = useQuery(trpc.projects.list.queryOptions({ organizationId: activeOrg.data?.id ?? null }));
-  if (process.env.NODE_ENV !== 'production' && q.data) {
-    const data = q.data.data as ProjectsListData | undefined;
-    const personal = data?.personal ?? [];
-    const org = data?.org ?? [];
-    const allProjects = [...org, ...personal].map((p: Project) => ({ id: p.id, name: p.name, organizationId: (p as Project).organizationId ?? null }));
-    // eslint-disable-next-line no-console
-    console.log("projects.list", JSON.stringify({ personalCount: personal.length, orgCount: org.length, personal, org, allProjects }, null, 2));
-  }
-  const data = q.data?.data as ProjectsListData | undefined;
-  const personal = data?.personal ?? [];
-  const org = data?.org ?? [];
-
-  const invalidateAll = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: trpc.projects.list.queryKey() });
+  const { data: projectsData, isPending, error } = useQuery(trpc.projects.list.queryOptions({ 
+    organizationId: activeOrg.data?.id ?? null 
+  }));
+  
+  const personalProjects = projectsData?.personal || [];
+  const orgProjects = projectsData?.org || [];
+  const organizations = (projectsData?.orgs || []) as ApiOrganizationData[];
+  
+  // Combine org projects with organization-specific projects for display
+  const allOrganizationProjects = [
+    ...orgProjects,
+    ...organizations.flatMap((organizationData) => organizationData.projects || [])
+  ];
+  
+  const refreshProject = useCallback(async (projectId: string) => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: trpc.projects.get.queryKey({ id: projectId }) }),
+      queryClient.invalidateQueries({ queryKey: trpc.projects.list.queryKey() }),
+    ]);
   }, []);
 
-  const orgWithHandlers = useMemo(() => org.map((p) => ({
-    project: p,
-    onRefresh: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: trpc.projects.get.queryKey({ id: p.id }) }),
-        queryClient.invalidateQueries({ queryKey: trpc.projects.list.queryKey() }),
-      ]);
-    },
-  })), [org]);
-
-  const personalWithHandlers = useMemo(() => personal.map((p) => ({
-    project: p,
-    onRefresh: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: trpc.projects.get.queryKey({ id: p.id }) }),
-        queryClient.invalidateQueries({ queryKey: trpc.projects.list.queryKey() }),
-      ]);
-    },
-  })), [personal]);
+  if (process.env.NODE_ENV !== 'production' && projectsData) {
+    // eslint-disable-next-line no-console
+    console.log("projects.list", JSON.stringify({ 
+      personalCount: personalProjects.length, 
+      organizationCount: allOrganizationProjects.length, 
+      personalProjects, 
+      organizationProjects: allOrganizationProjects,
+      organizations 
+    }, null, 2));
+  }
 
   return (
     <div className="space-y-8">
-      {q.isPending && (
-        <div className="flex items-center gap-2 text-sm text-text-secondary"><Spinner size={16} /> Loading projects…</div>
+      {isPending && (
+        <div className="flex items-center gap-2 text-sm text-text-secondary">
+          <Spinner size={16} /> Loading projects…
+        </div>
       )}
-      {q.error && !q.isPending && (
+      
+      {error && !isPending && (
         <div className="text-sm text-red-500">Failed to load projects</div>
       )}
-      {!q.isPending && !q.error && personal.length === 0 && org.length === 0 && (
+      
+      {!isPending && !error && personalProjects.length === 0 && allOrganizationProjects.length === 0 && (
         <div className="text-text-secondary text-sm">No projects yet.</div>
       )}
-      {/* {debug.data && (
-        <pre className="text-xs p-3 rounded-md bg-muted/30 overflow-auto max-h-48">
-{JSON.stringify(debug.data.data, null, 2)}
-        </pre>
-      )} */}
-      {!q.isPending && !q.error && orgWithHandlers.length > 0 && (
+
+      {/* Organization Projects */}
+      {!isPending && !error && allOrganizationProjects.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-text-secondary">Organization</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {orgWithHandlers.map(({ project: p, onRefresh }) => (
-              <Link key={p.id} href={`/project/${p.id}`}>
+            {allOrganizationProjects.map((project) => (
+              <Link key={project.id} href={`/project/${project.id}`}>
                 <ProjectCard
-                  name={p.name}
-                  logoUrl={p.logoUrl || undefined}
+                  name={project.name}
+                  logoUrl={project.logoUrl || undefined}
                   devices={[]}
-                  lastSyncTime={(p.updatedAt ?? p.createdAt) as unknown as string}
-                  environmentCount={(p as unknown as { envCount?: number }).envCount ?? 0}
-                  onRefresh={onRefresh}
+                  lastSyncTime={project.updatedAt.toISOString()}
+                  environmentCount={project.envCount}
+                  onRefresh={() => refreshProject(project.id)}
                 />
               </Link>
             ))}
           </div>
         </div>
       )}
-      {!q.isPending && !q.error && personalWithHandlers.length > 0 && (
+
+      {/* Personal Projects */}
+      {!isPending && !error && personalProjects.length > 0 && (
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-text-secondary">Personal</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {personalWithHandlers.map(({ project: p, onRefresh }) => (
-              <Link key={p.id} href={`/project/${p.id}`}>
+            {personalProjects.map((project) => (
+              <Link key={project.id} href={`/project/${project.id}`}>
                 <ProjectCard
-                  name={p.name}
-                  logoUrl={p.logoUrl || undefined}
+                  name={project.name}
+                  logoUrl={project.logoUrl || undefined}
                   devices={[]}
-                  lastSyncTime={(p.updatedAt ?? p.createdAt) as unknown as string}
-                  environmentCount={(p as unknown as { envCount?: number }).envCount ?? 0}
-                  onRefresh={onRefresh}
+                  lastSyncTime={project.updatedAt.toISOString()}
+                  environmentCount={project.envCount}
+                  onRefresh={() => refreshProject(project.id)}
                 />
               </Link>
             ))}
@@ -105,5 +120,3 @@ export function ProjectsList() {
     </div>
   );
 }
-
-

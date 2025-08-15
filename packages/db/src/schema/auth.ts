@@ -98,3 +98,13 @@ export const invitation = pgTable("invitation", {
   status: text("status").notNull(),
   expiresAt: timestamp("expires_at").notNull(),
 });
+
+export const cliToken = pgTable("cli_token", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => user.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  lastUsedAt: timestamp("last_used_at"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});

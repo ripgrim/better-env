@@ -6,7 +6,7 @@ import { randomUUID } from "node:crypto";
 import { db, project, environmentVariable, member, organization } from "@better-env/db";
 import { grim } from "../lib/use-dev-log";
 const { info } = grim();
-import { protectedProcedure, router } from "../trpc";
+import { protectedProcedure, createTRPCRouter } from "../trpc";
 import { encryptSecretForProject, decryptSecretForProject } from "../lib/crypto";
 
 const envVarInput = z.object({
@@ -16,7 +16,7 @@ const envVarInput = z.object({
   environmentName: z.string().min(1).default("default"),
 });
 
-export const projectsRouter = router({
+export const projectsRouter = createTRPCRouter({
   create: protectedProcedure
     .input(
       z.object({
@@ -65,7 +65,7 @@ export const projectsRouter = router({
           }
         }
 
-        return { success: true, data: created, envsInserted: insertedEnvCount };
+        return { ...created, envsInserted: insertedEnvCount };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
         console.error("[projects.create]", error);
@@ -133,7 +133,7 @@ export const projectsRouter = router({
       orgs = Array.from(byId.values());
     }
 
-    return { success: true, data: { personal, org, orgs } };
+    return { personal, org, orgs };
   }),
 
   debugAll: protectedProcedure.query(async ({ ctx }) => {
@@ -155,7 +155,7 @@ export const projectsRouter = router({
       .leftJoin(environmentVariable, eq(environmentVariable.projectId, project.id))
       .groupBy(project.id)
       .orderBy(desc(project.createdAt));
-    return { success: true, data: rows };
+    return rows;
   }),
 
   get: protectedProcedure.input(z.object({ id: z.string() })).query(async ({ ctx, input }) => {
@@ -191,7 +191,7 @@ export const projectsRouter = router({
       value: decryptSecretForProject(row.id, e.value),
     }));
 
-    return { success: true, data: { ...row, envs } };
+    return { ...row, envs };
   }),
 
   update: protectedProcedure
@@ -217,7 +217,7 @@ export const projectsRouter = router({
         .set({ name: input.name, logoUrl: input.logoUrl, updatedAt: new Date() })
         .where(eq(project.id, input.id))
         .returning();
-      return { success: true, data: updated };
+      return updated;
     }),
 
   delete: protectedProcedure.input(z.object({ id: z.string() })).mutation(async ({ ctx, input }) => {
@@ -235,10 +235,10 @@ export const projectsRouter = router({
     if (!existing) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
 
     await db.delete(project).where(eq(project.id, input.id));
-    return { success: true };
+    return { deleted: true };
   }),
 
-  envs: router({
+  envs: createTRPCRouter({
     add: protectedProcedure
       .input(z.object({ projectId: z.string(), env: envVarInput }))
       .mutation(async ({ ctx, input }) => {
@@ -268,7 +268,7 @@ export const projectsRouter = router({
             })
             .returning();
 
-          return { success: true, data: created };
+          return created;
         } catch (err) {
           const anyErr = err as any;
           if (anyErr?.code === "23505" || (anyErr?.message && /duplicate|unique/i.test(anyErr.message))) {
@@ -327,7 +327,7 @@ export const projectsRouter = router({
           .returning();
 
         if (!updated) throw new TRPCError({ code: "NOT_FOUND", message: "Env var not found" });
-        return { success: true, data: updated };
+        return updated;
       }),
 
     delete: protectedProcedure
@@ -347,7 +347,7 @@ export const projectsRouter = router({
         if (!own) throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
 
         await db.delete(environmentVariable).where(eq(environmentVariable.id, input.id));
-        return { success: true };
+        return { deleted: true };
       }),
   }),
 });

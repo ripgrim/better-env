@@ -3,9 +3,9 @@ import { TRPCError } from "@trpc/server";
 import { eq, desc, sql } from "drizzle-orm";
 
 import { db, user, session } from "@better-env/db";
-import { protectedProcedure, publicProcedure, router } from "../trpc";
+import { protectedProcedure, publicProcedure, createTRPCRouter } from "../trpc";
 
-export const userRouter = router({
+export const userRouter = createTRPCRouter({
   hasAccess: protectedProcedure.query(async ({ ctx }) => {
     const userId = ctx.session.user.id;
 
@@ -19,7 +19,6 @@ export const userRouter = router({
     }
 
     return {
-      success: true,
       hasAccess: userRecord[0].hasAccess,
     };
   }),
@@ -28,10 +27,7 @@ export const userRouter = router({
     try {
       // Return null if user is not authenticated
       if (!ctx.session?.user?.id) {
-        return {
-          success: true,
-          data: null,
-        };
+        return null;
       }
 
       const userId = ctx.session.user.id;
@@ -57,10 +53,7 @@ export const userRouter = router({
         });
       }
 
-      return {
-        success: true,
-        data: userRecord,
-      };
+      return userRecord;
     } catch (error) {
       if (error instanceof TRPCError) throw error;
 
@@ -86,10 +79,7 @@ export const userRouter = router({
         .where(eq(session.userId, ctx.session.user.id))
         .orderBy(desc(session.createdAt));
 
-      return {
-        success: true,
-        data: sessions,
-      };
+      return sessions;
     } catch (error) {
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
@@ -120,7 +110,6 @@ export const userRouter = router({
       await db.delete(session).where(eq(session.id, input.sessionId));
 
       return {
-        success: true,
         message: "Session revoked successfully",
       };
     } catch (error) {
@@ -156,7 +145,7 @@ export const userRouter = router({
           .set({ name: input.name, updatedAt: new Date() })
           .where(eq(user.id, ctx.session.user.id))
           .returning();
-        return { success: true, data: updated };
+        return updated;
       } catch (error) {
         if (error instanceof TRPCError) throw error;
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to update user name" });

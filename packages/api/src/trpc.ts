@@ -1,53 +1,79 @@
-import { initTRPC, TRPCError } from "@trpc/server";
+import { TRPCError, initTRPC } from "@trpc/server";
+import superjson from "superjson";
+import { ZodError } from "zod";
+import 'server-only';
+import { createContext } from "./context";
 import type { Context } from "./context";
 
-export const t = initTRPC.context<Context>().create();
+export const createTRPCContext = createContext;
 
-export const router = t.router;
+const t = initTRPC.context<Context>().create({
+  transformer: superjson,
+  errorFormatter({ shape, error }) {
+    return {
+      ...shape,
+      data: {
+        ...shape.data,
+        zodError: error.cause instanceof ZodError ? error.cause.flatten() : null,
+      },
+    };
+  },
+});
+
+export const createCallerFactory = t.createCallerFactory;
+export const createTRPCRouter = t.router;
 
 export const publicProcedure = t.procedure;
 
 export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
   if (!ctx.session) {
-    throw new TRPCError({
-      code: "UNAUTHORIZED",
-      message: "Authentication required",
-      cause: "No session",
-    });
+    throw new TRPCError({ code: 'UNAUTHORIZED' });
   }
+
   return next({
     ctx: {
       ...ctx,
-      session: ctx.session,
+      session: { ...ctx.session },
+      user: { ...ctx.session.user },
     },
   });
 });
 
-export const adminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
-  const user = await ctx.db.query.user.findFirst({
-    where: (user, { eq }) => eq(user.id, ctx.session.user.id),
-  });
-
-  // Temporary bypass for development - remove this in production
-  if (!user) {
+export const cliProcedure = t.procedure.use(({ ctx, next }) => {
+  if (!ctx.cliAuth) {
     throw new TRPCError({
-      code: "FORBIDDEN",
-      message: "User not found",
+      code: "UNAUTHORIZED",
+      message: "CLI authentication required",
     });
   }
-  
-  // For now, allow access if user exists (temporary for development)
-  // if (!user || user.role !== "admin") {
-  //   throw new TRPCError({
-  //     code: "FORBIDDEN",
-  //     message: "Admin access required",
-  //   });
-  // }
-  
+
   return next({
     ctx: {
       ...ctx,
-      user,
+      cliAuth: { ...ctx.cliAuth },
+      user: { ...ctx.cliAuth.user },
+    },
+  });
+});
+
+export const adminProcedure = t.procedure.use(({ ctx, next }) => {
+  if (!ctx.session?.user) {
+    throw new TRPCError({ code: 'UNAUTHORIZED' });
+  }
+
+  // Add role check when user roles are implemented
+  // if (ctx.session.user.role === 'user') {
+  //   throw new TRPCError({
+  //     code: 'FORBIDDEN',
+  //     message: 'You do not have permission to access this resource',
+  //   });
+  // }
+
+  return next({
+    ctx: {
+      ...ctx,
+      session: { ...ctx.session },
+      user: { ...ctx.session.user },
     },
   });
 });

@@ -1,19 +1,33 @@
 {
   "name": "@better-env/api",
   "version": "0.1.0",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
-  "dependencies": {
+  "private": true,
+  "exports": {
+    ".": "./src/root.ts",
+    "./trpc": "./src/trpc.ts"
+  },
+  "scripts": {
+    "lint": "eslint ."
+  },
+  "peerDependencies": {
     "@trpc/server": "^11.4.2",
+    "next": "^15.0.0",
+    "server-only": "^0.0.1",
+    "superjson": "^2.2.1",
+    "zod": "^3.23.8"
+  },
+  "dependencies": {
     "@unkey/ratelimit": "^2.0.0",
     "@better-env/db": "workspace:*",
     "@better-env/auth": "workspace:*",
     "@better-env/dev-logger": "workspace:*",
-    "zod": "^3.23.8",
     "@octokit/core": "^7.0.3",
-    "@octokit/plugin-rest-endpoint-methods": "16.0.0"
+    "@octokit/plugin-rest-endpoint-methods": "16.0.0",
+    "drizzle-orm": "^0.36.4",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
-    "typescript": "^5"
+    "typescript": "^5",
+    "eslint": "^9.0.0"
   }
 }

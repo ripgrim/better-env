@@ -29,7 +29,8 @@
     "prepublishOnly": "bun run build",
     "release": "changeset version",
     "pub:release": "bun run build && bun publish --no-git-checks --access public",
-    "pub:beta": "bun run build && bun publish --no-git-checks --access public --tag beta"
+    "pub:beta": "bun run build && bun publish --no-git-checks --access public --tag beta",
+    "debug": "tail -f /tmp/cli-debug.log"
   },
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
@@ -41,10 +42,14 @@
   },
   "dependencies": {
     "@opentui/core": "^0.1.1",
+    "@types/bun": "^1.2.20",
+    "@trpc/client": "^11.4.2",
+    "@better-env/api": "workspace:*",
     "chalk": "^5.3.0",
     "commander": "^11.1.0",
     "fs-extra": "^11.2.0",
     "ora": "^8.0.1",
-    "prompts": "^2.4.2"
+    "prompts": "^2.4.2",
+    "superjson": "^2.2.1"
   }
 }

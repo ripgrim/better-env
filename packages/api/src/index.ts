@@ -1,4 +1,2 @@
-export * from "./routers";
+export { appRouter, createContext, type AppRouter } from "./root";
 export * from "./trpc";
-export * from "./context";
-export type { AppRouter } from "./routers";

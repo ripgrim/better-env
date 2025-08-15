@@ -2,7 +2,10 @@ import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter, createContext } from "@better-env/api";
 import { NextRequest } from "next/server";
 
-function handler(req: NextRequest) {
+async function handler(req: NextRequest) {
+  console.log("🔍 [TRPC Handler] Request:", req.method, req.url);
+  console.log("🔍 [TRPC Handler] Content-Type:", req.headers.get("content-type"));
+  
   return fetchRequestHandler({
     endpoint: "/api/trpc",
     req,
@@ -10,4 +13,5 @@ function handler(req: NextRequest) {
     createContext: () => createContext(req),
   });
 }
+
 export { handler as GET, handler as POST };
