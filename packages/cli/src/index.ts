@@ -4,11 +4,13 @@ import {
   createCliRenderer,
   GroupRenderable,
   TextRenderable,
+  SelectRenderableEvents,
+  type SelectOption,
   type ParsedKey,
 } from "@opentui/core";
 import { getKeyHandler } from "@opentui/core";
 
-// Debug logger that writes to file 
+// Debug logger that writes to file
 const debugLog = (message: string) => {
   fs.appendFileSync(
     "/tmp/cli-debug.log",
@@ -29,7 +31,7 @@ import {
   runPull,
   runPush,
 } from "./utils/common";
-import { colors } from "./ui/ui";
+import { colors, createBox, createText, createSelect, centerX, createLogo } from "./ui/ui";
 
 // Screens
 import { createAuthScreens } from "./screens/auth";
@@ -91,6 +93,91 @@ async function handleMenuSelection(value: string) {
   }
 }
 
+function showWelcomeScreen() {
+  debugLog("👋 Showing welcome screen...")
+  clearScreen()
+  setCurrentScreen("welcome")
+
+  if (!parentContainer || !renderer) return
+
+  // Logo
+  const logo = createLogo(renderer, { left: centerX(renderer, 60), top: 2 })
+  addElement(logo)
+
+  const titleBox = createBox(
+    "welcome-title",
+    "Welcome to Better Env CLI",
+    { left: centerX(renderer, 60), top: 8 },
+    { width: 60, height: 3 }
+  )
+  addElement(titleBox)
+
+  const descText = createText(
+    "welcome-desc",
+    "Securely manage your environment variables across projects",
+    { left: centerX(renderer, 55), top: 12 },
+    { fg: colors.secondary }
+  )
+  addElement(descText)
+
+  const welcomeOptions: SelectOption[] = [
+    { name: "🔐 Login", description: "Authenticate with your Better Env account", value: "login" },
+    { name: "ℹ️  Learn More", description: "Visit better-env.com to learn about the platform", value: "learn" },
+    { name: "❌ Exit", description: "Quit the CLI", value: "exit" }
+  ]
+
+  const welcomeSelect = createSelect(
+    "welcome-select",
+    welcomeOptions,
+    { left: centerX(renderer, 76), top: 15 },
+    { width: 76, height: 3 }
+  )
+
+  welcomeSelect.on(SelectRenderableEvents.ITEM_SELECTED, (index: number, option: SelectOption) => {
+    handleDebouncedSelection(async () => {
+      switch (option.value) {
+        case "login":
+          debugLog("👤 User selected login")
+          authScreens.showLoginScreen()
+          break
+        case "learn":
+          debugLog("📚 User selected learn more")
+          const command = process.platform === "darwin" ? "open" :
+                         process.platform === "win32" ? "start" : "xdg-open"
+          try {
+            require("child_process").exec(`${command} "https://better-env.com"`)
+            debugLog("🌐 Opened better-env.com")
+          } catch (error) {
+            debugLog(`❌ Failed to open browser: ${error}`)
+          }
+          // Stay on welcome screen after opening browser
+          break
+        case "exit":
+          debugLog("🚪 User selected exit")
+          process.exit(0)
+          break
+      }
+    })
+  })
+
+  addElement(welcomeSelect)
+
+  const hintText = createText(
+    "welcome-hint",
+    "↑↓: Navigate | Enter: Select | Ctrl+C: Exit",
+    { left: centerX(renderer, 40), top: 20 },
+    { fg: colors.muted }
+  )
+  addElement(hintText)
+
+  // Auto-focus
+  setTimeout(() => {
+    if (welcomeSelect) {
+      welcomeSelect.focus()
+    }
+  }, 100)
+}
+
 async function checkAuthAndContinue() {
   if (await isAuthenticated()) {
     currentUser = await getCurrentUser();
@@ -119,6 +206,9 @@ function handleKeyPress(key: ParsedKey) {
 
   if (key.name === "escape" || key.name === "backspace") {
     switch (getCurrentScreen()) {
+      case "welcome":
+        process.exit(0);
+        break;
       case "main":
         mainMenuScreen.showSplashScreen();
         break;
@@ -128,7 +218,8 @@ function handleKeyPress(key: ParsedKey) {
         mainMenuScreen.showMainMenu();
         break;
       case "login":
-        process.exit(0);
+      case "getting-code":
+        showWelcomeScreen();
         break;
       case "device-auth":
         authScreens.cleanup();
@@ -161,24 +252,27 @@ function handleKeyPress(key: ParsedKey) {
     return;
   }
 
+  if (getCurrentScreen() === "welcome") {
+    // Welcome screen uses select interface - no manual key handling needed
+    return;
+  }
+
   if (getCurrentScreen() === "splash") {
     mainMenuScreen.showMainMenu();
     return;
   }
 
-  if (getCurrentScreen() === "login") {
-    if (key.name === "q") {
-      debugLog("🚪 User chose to quit");
-      process.exit(0);
-    } else if (
-      key.name === "space" ||
-      key.name === "return" ||
-      key.name === "enter"
-    ) {
-      debugLog("🔑 User started device auth flow");
-      authScreens.showDeviceAuth();
-    } else {
-      debugLog(`🚫 Ignoring key '${key.name}' on login screen`);
+  if (getCurrentScreen() === "login" || getCurrentScreen() === "getting-code") {
+    // Login screen uses select interface - no manual key handling needed
+    return;
+  }
+
+  if (getCurrentScreen() === "device-auth") {
+    if (key.name === "o") {
+      // Open browser with auto-filled code
+      if ((global as any).openBrowserWithCode) {
+        (global as any).openBrowserWithCode();
+      }
     }
     return;
   }
@@ -300,21 +394,9 @@ export async function run(): Promise<void> {
     process.exit(0);
   });
 
-  // Check authentication and show appropriate screen
-  debugLog("🔍 Checking authentication...");
-  cliToken = loadToken();
-  debugLog(`🔑 Token loaded: ${cliToken ? "YES" : "NO"}`);
-
-  if (await isAuthenticated()) {
-    debugLog("✅ User authenticated, getting user data...");
-    currentUser = await getCurrentUser();
-    debugLog(`👤 Current user: ${currentUser?.name || "Unknown"}`);
-    debugLog("🎯 Showing splash screen...");
-    mainMenuScreen.showSplashScreen();
-  } else {
-    debugLog("❌ User not authenticated, showing login screen...");
-    authScreens.showLoginScreen();
-  }
+  // Show welcome screen instead of auto-checking authentication
+  debugLog("👋 Showing welcome screen...");
+  showWelcomeScreen();
 
   debugLog("🎯 CLI initialization complete");
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { authClient } from "@better-env/auth/client";
 import { Button } from "@/components/ui/button";
@@ -14,9 +14,27 @@ export default function DeviceAuthorizePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [autoSubmitted, setAutoSubmitted] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const { data: session } = authClient.useSession();
+
+  // Auto-fill user code from URL params
+  useEffect(() => {
+    const codeFromUrl = searchParams.get('code');
+    if (codeFromUrl && codeFromUrl.length === 8) {
+      setUserCode(codeFromUrl.toUpperCase());
+      // Auto-submit if we have a session and haven't auto-submitted yet
+      if (session?.user?.id && !autoSubmitted) {
+        setAutoSubmitted(true);
+        // Small delay to ensure the UI updates
+        setTimeout(() => {
+          authorizeDevice.mutate({ userCode: codeFromUrl.toUpperCase() });
+        }, 500);
+      }
+    }
+  }, [searchParams, session, autoSubmitted]);
 
   const authorizeDevice = useMutation({
     mutationFn: async (input: { userCode: string }) => {
@@ -125,7 +143,10 @@ export default function DeviceAuthorizePage() {
         <CardHeader className="text-center">
           <CardTitle>Authorize CLI Device</CardTitle>
           <CardDescription>
-            Enter the code displayed in your terminal to authorize your CLI access
+            {userCode ?
+              "Code auto-filled from CLI. Click 'Authorize Device' to continue." :
+              "Enter the code displayed in your terminal to authorize your CLI access"
+            }
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -138,9 +159,9 @@ export default function DeviceAuthorizePage() {
                 placeholder="Enter 8-character code"
                 value={userCode}
                 onChange={(e) => setUserCode(e.target.value)}
-                className="text-center font-mono text-lg tracking-wider"
+                className={`text-center font-mono text-lg tracking-wider ${userCode ? 'bg-green-50 border-green-300' : ''}`}
                 maxLength={8}
-                autoFocus
+                autoFocus={!userCode} // Only auto-focus if code isn't pre-filled
               />
             </div>
 
@@ -150,12 +171,14 @@ export default function DeviceAuthorizePage() {
               </div>
             )}
 
-            <Button 
-              type="submit" 
-              className="w-full" 
+            <Button
+              type="submit"
+              className="w-full"
               disabled={isLoading || !userCode.trim()}
             >
-              {isLoading ? "Authorizing..." : "Authorize Device"}
+              {isLoading ? "Authorizing..." :
+               autoSubmitted ? "Auto-authorizing..." :
+               "Authorize Device"}
             </Button>
           </form>
 

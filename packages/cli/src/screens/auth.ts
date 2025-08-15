@@ -28,9 +28,9 @@ export function createAuthScreens(
   let pollInterval: NodeJS.Timeout | null = null
 
   function showLoginScreen() {
-    debugLog("🔑 Showing login screen...")
+    debugLog("🔑 Auto-starting authentication flow...")
     clearScreen()
-    setCurrentScreen("login")
+    setCurrentScreen("getting-code")
 
     if (!parentContainer) {
       debugLog("❌ No parent container for login screen!")
@@ -38,32 +38,37 @@ export function createAuthScreens(
     }
 
     const titleBox = createBox(
-      "login-title",
-      "Authentication Required",
-      { left: centerX(renderer, 80), top: 6 },
-      { width: 80, height: 3 }
+      "auth-title",
+      "🔐 Better Env CLI",
+      { left: centerX(renderer, 60), top: 8 },
+      { width: 60, height: 3 }
     )
     addElement(titleBox)
 
-    const step1 = createText(
-      "login-step1",
-      "Press SPACE to start device authentication",
-      { left: centerX(renderer, 40), top: 10 },
+    const statusText = createText(
+      "auth-status",
+      "Getting authorization code...",
+      { left: centerX(renderer, 40), top: 12 },
       { fg: colors.primary }
     )
-    addElement(step1)
+    addElement(statusText)
 
-    const step2 = createText(
-      "login-step2",
-      "or 'q' to quit",
-      { left: centerX(renderer, 15), top: 12 },
+    const cancelText = createText(
+      "cancel-hint",
+      "Press 'q' to quit",
+      { left: centerX(renderer, 15), top: 16 },
       { fg: colors.muted }
     )
-    addElement(step2)
+    addElement(cancelText)
+
+    // Auto-start device auth after a brief moment
+    setTimeout(() => {
+      showDeviceAuth()
+    }, 1000)
   }
 
   async function showDeviceAuth() {
-    debugLog("📱 Starting device authorization flow...")
+    debugLog("📱 Starting seamless device authorization...")
     clearScreen()
     setCurrentScreen("device-auth")
 
@@ -71,6 +76,23 @@ export function createAuthScreens(
       debugLog("❌ No parent container for device auth!")
       return
     }
+
+    // Show getting code state first
+    const titleBox = createBox(
+      "device-title",
+      "🔐 Better Env CLI",
+      { left: centerX(renderer, 60), top: 8 },
+      { width: 60, height: 3 }
+    )
+    addElement(titleBox)
+
+    const statusText = createText(
+      "auth-status",
+      "Opening browser for authorization...",
+      { left: centerX(renderer, 40), top: 12 },
+      { fg: colors.primary }
+    )
+    addElement(statusText)
 
     // Request device code from API
     const deviceResponse = await apiClient.requestDeviceCode()
@@ -83,37 +105,44 @@ export function createAuthScreens(
 
     const { deviceCode, userCode, verificationUri, expiresIn, interval } = deviceResponse.data
 
-    const titleBox = createBox(
-      "device-title",
-      "Device Authorization",
-      { left: centerX(renderer, 80), top: 6 },
-      { width: 80, height: 3 }
-    )
-    addElement(titleBox)
+    // Auto-open browser immediately
+    const verificationUriWithCode = `${verificationUri}?code=${userCode}`;
+    const command = process.platform === "darwin" ? "open" :
+                    process.platform === "win32" ? "start" : "xdg-open";
+    
+    try {
+      require("child_process").exec(`${command} "${verificationUriWithCode}"`);
+      debugLog(`🌐 Auto-opened browser: ${verificationUriWithCode}`);
+    } catch (error) {
+      debugLog(`❌ Failed to auto-open browser: ${error}`);
+    }
 
-    const step1 = createText(
-      "device-step1",
-      `1. Go to: ${verificationUri}`,
-      { left: centerX(renderer, 60), top: 10 },
+    // Update display to show waiting state
+    clearScreen()
+    
+    const waitingTitle = createBox(
+      "waiting-title",
+      "🔐 Better Env CLI",
+      { left: centerX(renderer, 60), top: 6 },
+      { width: 60, height: 3 }
+    )
+    addElement(waitingTitle)
+
+    const browserText = createText(
+      "browser-opened",
+      "✅ Browser opened for authorization",
+      { left: centerX(renderer, 40), top: 10 },
       { fg: colors.primary }
     )
-    addElement(step1)
-
-    const step2 = createText(
-      "device-step2",
-      `2. Enter this code: ${userCode}`,
-      { left: centerX(renderer, 40), top: 12 },
-      { fg: colors.primary }
-    )
-    addElement(step2)
+    addElement(browserText)
 
     const codeBox = createBox(
       "user-code",
-      userCode,
-      { left: centerX(renderer, 20), top: 14 },
-      { width: 20, height: 3 },
+      `Code: ${userCode}`,
+      { left: centerX(renderer, 25), top: 12 },
+      { width: 25, height: 3 },
       {
-        borderStyle: "double",
+        borderStyle: "single",
         bg: colors.instructionsBg,
         borderColor: colors.primary,
       }
@@ -122,21 +151,31 @@ export function createAuthScreens(
 
     const waitingText = createText(
       "waiting-text",
-      "Waiting for authorization... (Press ESC to cancel)",
-      { left: centerX(renderer, 50), top: 18 },
+      "Waiting for browser authorization...",
+      { left: centerX(renderer, 40), top: 16 },
       { fg: colors.muted }
     )
     addElement(waitingText)
 
-    // Open browser to verification URI
-    const command = process.platform === "darwin" ? "open" : 
-                    process.platform === "win32" ? "start" : "xdg-open";
-    
-    try {
-      require("child_process").exec(`${command} ${verificationUri}`);
-    } catch (error) {
-      debugLog(`❌ Failed to open browser: ${error}`);
-    }
+    const manualText = createText(
+      "manual-hint",
+      `Manual: ${verificationUri} • Press 'o' to re-open • 'q' to quit`,
+      { left: centerX(renderer, 70), top: 18 },
+      { fg: colors.muted }
+    )
+    addElement(manualText)
+
+    // Store the open browser function for re-opening
+    const openBrowser = () => {
+      try {
+        require("child_process").exec(`${command} "${verificationUriWithCode}"`);
+        debugLog(`🌐 Re-opened browser: ${verificationUriWithCode}`);
+      } catch (error) {
+        debugLog(`❌ Failed to re-open browser: ${error}`);
+      }
+    };
+
+    (global as any).openBrowserWithCode = openBrowser;
 
     // Start polling for token
     let attempts = 0
@@ -169,18 +208,39 @@ export function createAuthScreens(
           pollInterval = null
         }
 
-        // Save token and proceed
+        // Show success briefly
+        clearScreen()
+        const successTitle = createBox(
+          "success-title",
+          "✅ Authorization Successful",
+          { left: centerX(renderer, 60), top: 10 },
+          { width: 60, height: 3 }
+        )
+        addElement(successTitle)
+
+        const successText = createText(
+          "success-text",
+          "Welcome to Better Env CLI!",
+          { left: centerX(renderer, 30), top: 13 },
+          { fg: colors.primary }
+        )
+        addElement(successText)
+
+        // Save token and proceed after brief success display
         const token = tokenResponse.data.token
         saveToken(token)
         onTokenSet(token)
         
-        if (await isAuthenticated()) {
-          debugLog("🎯 Authentication verified, showing splash screen...")
-          showSplashScreen()
-        } else {
-          debugLog("❌ Token verification failed")
-          showAuthError()
-        }
+        setTimeout(async () => {
+          if (await isAuthenticated()) {
+            debugLog("🎯 Authentication verified, showing splash screen...")
+            showSplashScreen()
+          } else {
+            debugLog("❌ Token verification failed")
+            showAuthError()
+          }
+        }, 1500)
+
       } else if (tokenResponse.error && !tokenResponse.error.includes("Authorization pending")) {
         debugLog(`❌ Device auth error: ${tokenResponse.error}`)
         
@@ -233,22 +293,39 @@ export function createAuthScreens(
 
     const errorBox = createBox(
       "error-title",
-      "Authentication Failed",
-      { left: centerX(renderer, 80), top: 10 },
-      { width: 80, height: 6 },
+      "❌ Authentication Failed",
+      { left: centerX(renderer, 60), top: 8 },
+      { width: 60, height: 3 },
       {
         borderStyle: "single",
+        borderColor: "red",
       }
     )
     addElement(errorBox)
 
     const errorText = createText(
       "error-text",
-      "Failed to authenticate. Press any key to try again.",
-      { left: centerX(renderer, 50), top: 12 },
-      { fg: colors.primary }
+      "Something went wrong during authentication.",
+      { left: centerX(renderer, 45), top: 12 },
+      { fg: colors.muted }
     )
     addElement(errorText)
+
+    const retryText = createText(
+      "retry-text",
+      "Press any key to try again, or 'q' to quit",
+      { left: centerX(renderer, 45), top: 14 },
+      { fg: colors.primary }
+    )
+    addElement(retryText)
+
+    const helpText = createText(
+      "help-text",
+      "💡 Make sure your browser allows popups and you're logged into Better Env",
+      { left: centerX(renderer, 70), top: 16 },
+      { fg: colors.muted }
+    )
+    addElement(helpText)
   }
 
   // Cleanup function for device auth polling
